@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { WorkspaceSwitcher } from '@/components/workspace-switcher';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -25,21 +26,15 @@ export function AppShell({ children, workspaceId, workspaceName, title, subtitle
   return (
     <div className="h-screen grid grid-cols-[240px_1fr] max-lg:grid-cols-1 max-lg:grid-rows-[auto_1fr]">
       <aside className="bg-surface border-r border-line flex flex-col max-lg:border-r-0 max-lg:border-b max-lg:border-line">
-        <div className="h-[64px] shrink-0 flex items-center px-5 border-b border-line">
-          <Link href="/workspaces" className="text-2xl tracking-[-0.02em] font-bold">
+        <div className="shrink-0 px-3 pt-4 pb-2 border-b border-line">
+          <Link href="/workspaces" className="block mb-3 text-xl tracking-[-0.02em] font-bold px-1">
             Psycho<span className="text-accent-soft">.Box</span>
           </Link>
+          <WorkspaceSwitcher
+            currentWorkspaceId={workspaceId}
+            currentWorkspaceName={workspaceName}
+          />
         </div>
-
-        {workspaceId && workspaceName ? (
-          <div className="m-3 p-2.5 bg-surface-2 border border-line rounded-[10px]">
-            <div className="size-7 rounded-lg bg-gradient-to-br from-accent to-[#f06aaf] grid place-items-center text-[11px] font-bold mb-2">
-              {workspaceName.slice(0, 2).toUpperCase()}
-            </div>
-            <p className="m-0 text-[13px] font-semibold truncate">{workspaceName}</p>
-            <p className="m-0 text-[11px] text-text-dim">워크스페이스</p>
-          </div>
-        ) : null}
 
         <nav className="py-2 px-3 flex-1">
           <p className="m-0 mb-1.5 text-[10px] tracking-[0.08em] uppercase text-text-dim px-2">메인</p>
@@ -68,12 +63,6 @@ export function AppShell({ children, workspaceId, workspaceName, title, subtitle
               </Link>
             )}
         </nav>
-
-        <div className="border-t border-line p-3">
-          <Link className="block py-2 px-2.5 rounded-lg text-text-soft text-[13px] hover:bg-surface-2 hover:text-text" href="/workspaces">
-            워크스페이스 목록
-          </Link>
-        </div>
       </aside>
 
       <main className="grid grid-rows-[64px_1fr] min-w-0 overflow-auto">
