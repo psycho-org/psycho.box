@@ -134,49 +134,69 @@ export default function RegisterPage() {
   return (
     <AuthCard title="회원가입">
       <nav className="mb-6" aria-label="회원가입 단계">
-        <div className="flex w-full">
-          {steps.map((s, i) => (
-            <span
-              key={s.num}
-              className={`flex flex-1 items-center justify-center gap-2 py-2.5 pl-4 pr-6 text-sm font-semibold text-white min-w-0 ${
-                i > 0 ? '-ml-3' : ''
-              }`}
-              style={{
-                clipPath:
-                  i === 0
-                    ? 'polygon(0 0, 0 100%, calc(100% - 12px) 100%, 100% 50%, calc(100% - 12px) 0)'
-                    : i === steps.length - 1
-                      ? 'polygon(12px 0, 12px 50%, 0 100%, 0 0, 100% 0, 100% 100%, 0 100%)'
-                      : 'polygon(0 0, 12px 50%, 0 100%, calc(100% - 12px) 100%, 100% 50%, calc(100% - 12px) 0)',
-                backgroundColor:
-                  step === s.num
-                    ? 'var(--color-accent)'
-                    : step > s.num
-                      ? 'var(--color-surface-3)'
-                      : 'var(--color-surface-3)',
-                color:
-                  step === s.num
-                    ? 'white'
-                    : step > s.num
-                      ? 'var(--color-accent)'
-                      : 'var(--color-text-dim)',
-                border: step < s.num ? '1px solid var(--color-line)' : undefined,
-                boxShadow: step === s.num ? '0 2px 8px rgba(108, 99, 255, 0.3)' : undefined,
-              }}
-            >
-              {step > s.num ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              ) : null}
-              <span className="flex items-center gap-1.5 min-w-0">
-                {step > s.num ? null : <span className="shrink-0">STEP {s.num}</span>}
-                <span className={`truncate ${step === s.num ? 'opacity-90' : 'opacity-80'}`}>
-                  {s.label}
+        <div className="relative w-full" style={{ height: 42 }}>
+          <svg
+            className="absolute inset-0 w-full h-full"
+            viewBox="0 0 276 42"
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            {/* STEP 1: 좌측 직선, 우측 chevron (0~100) */}
+            <path
+              d="M 0 0 L 0 42 L 88 42 L 100 21 L 88 0 Z"
+              fill={
+                step === 1
+                  ? 'var(--color-accent)'
+                  : 'var(--color-surface-3)'
+              }
+            />
+            {/* STEP 2: 좌측 chevron, 우측 chevron (88~188) */}
+            <path
+              d="M 88 0 L 100 21 L 88 42 L 176 42 L 188 21 L 176 0 Z"
+              fill={
+                step === 2
+                  ? 'var(--color-accent)'
+                  : 'var(--color-surface-3)'
+              }
+            />
+            {/* STEP 3: 좌측 chevron, 우측 직선 (176~276) */}
+            <path
+              d="M 176 0 L 188 21 L 176 42 L 276 42 L 276 0 Z"
+              fill={
+                step === 3
+                  ? 'var(--color-accent)'
+                  : 'var(--color-surface-3)'
+              }
+            />
+          </svg>
+          <div className="absolute inset-0 flex">
+            {steps.map((s) => (
+              <span
+                key={s.num}
+                className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold min-w-0"
+                style={{
+                  color:
+                    step === s.num
+                      ? 'white'
+                      : step > s.num
+                        ? 'var(--color-accent)'
+                        : 'var(--color-text-dim)',
+                }}
+              >
+                {step > s.num ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                ) : null}
+                <span className="flex items-center gap-1.5 min-w-0">
+                  {step > s.num ? null : <span className="shrink-0">STEP {s.num}</span>}
+                  <span className={`truncate ${step === s.num ? 'opacity-90' : 'opacity-80'}`}>
+                    {s.label}
+                  </span>
                 </span>
               </span>
-            </span>
-          ))}
+            ))}
+          </div>
         </div>
       </nav>
       {step === 1 && (
