@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRef, useState, useEffect } from 'react';
 import { apiRequest } from '@/lib/client';
+import { CreateWorkspaceModal } from '@/components/create-workspace-modal';
 
 interface Workspace {
   id: string;
@@ -59,8 +60,28 @@ interface WorkspaceSwitcherProps {
   currentWorkspaceName?: string;
 }
 
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
+  );
+}
+
 export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: WorkspaceSwitcherProps) {
   const [open, setOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +147,17 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
             <GearIcon className="shrink-0 text-text-dim" />
             <span>내 워크스페이스</span>
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setCreateModalOpen(true);
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-text-soft hover:bg-surface-3 hover:text-text transition-colors text-left"
+          >
+            <PlusIcon className="shrink-0 text-text-dim" />
+            <span>새 워크스페이스 만들기</span>
+          </button>
           <div className="h-px bg-line my-1" />
           {loading ? (
             <div className="px-3 py-4 text-center text-[13px] text-text-dim">로딩 중...</div>
@@ -153,6 +185,11 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
           )}
         </div>
       )}
+
+      <CreateWorkspaceModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+      />
     </div>
   );
 }

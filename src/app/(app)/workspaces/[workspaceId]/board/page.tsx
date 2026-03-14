@@ -9,7 +9,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   return (
     <AppShell
       workspaceId={workspaceId}
-      workspaceName="DevTeam"
+      workspaceName="워크스페이스"
       title="스프린트 보드"
       subtitle="Kanban (할일/진행중/검토중/완료)"
     >

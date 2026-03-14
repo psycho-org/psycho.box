@@ -9,7 +9,7 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
   return (
     <AppShell
       workspaceId={workspaceId}
-      workspaceName="DevTeam"
+      workspaceName="워크스페이스"
       title="멤버 관리"
       subtitle="멤버 목록, 초대"
     >

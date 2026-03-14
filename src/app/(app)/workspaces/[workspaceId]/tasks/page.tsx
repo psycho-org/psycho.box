@@ -9,7 +9,7 @@ export default function TasksPage({ params }: { params: Promise<{ workspaceId: s
   return (
     <AppShell
       workspaceId={workspaceId}
-      workspaceName="DevTeam"
+      workspaceName="워크스페이스"
       title="태스크"
       subtitle="카드/리스트 뷰 전환, 백로그/로드맵/내 태스크 필터"
     >
