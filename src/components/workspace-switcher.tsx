@@ -86,6 +86,7 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fetchedWorkspaceName, setFetchedWorkspaceName] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -97,6 +98,22 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!currentWorkspaceId) {
+      setFetchedWorkspaceName(null);
+      return;
+    }
+    setFetchedWorkspaceName(null);
+    apiRequest<{ id?: string; name?: string; title?: string }>(
+      `/api/real/workspaces/${currentWorkspaceId}`,
+    ).then((result) => {
+      if (result.ok && result.data) {
+        const name = result.data.name ?? result.data.title ?? null;
+        setFetchedWorkspaceName(name);
+      }
+    });
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     if (!open) return;
@@ -115,7 +132,8 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
       .finally(() => setLoading(false));
   }, [open]);
 
-  const displayName = currentWorkspaceName ?? '워크스페이스 선택';
+  const displayName =
+    fetchedWorkspaceName ?? currentWorkspaceName ?? (currentWorkspaceId ? '로딩 중...' : '워크스페이스 선택');
 
   return (
     <div ref={ref} className="relative">
@@ -125,13 +143,12 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
         className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-surface-2 text-left transition-colors"
       >
         <div className="size-8 shrink-0 rounded-lg bg-gradient-to-br from-accent to-[#f06aaf] grid place-items-center text-[11px] font-bold">
-          {currentWorkspaceName ? currentWorkspaceName.slice(0, 2).toUpperCase() : 'PB'}
+          {(fetchedWorkspaceName ?? currentWorkspaceName)
+            ? (fetchedWorkspaceName ?? currentWorkspaceName)!.slice(0, 2).toUpperCase()
+            : 'PB'}
         </div>
         <div className="flex-1 min-w-0">
           <p className="m-0 text-[13px] font-semibold truncate">{displayName}</p>
-          <p className="m-0 text-[11px] text-text-dim">
-            {currentWorkspaceId ? '워크스페이스' : '클릭하여 선택'}
-          </p>
         </div>
         <ChevronDownIcon
           className={`shrink-0 text-text-dim transition-transform ${open ? 'rotate-180' : ''}`}
