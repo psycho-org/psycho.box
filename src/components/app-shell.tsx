@@ -105,9 +105,17 @@ export function AppShell({ workspaceId, workspaceName, title, subtitle, children
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col">
-        <header className="shrink-0 border-b border-line bg-surface px-6 py-4">
-          <h1 className="m-0 text-lg font-semibold">{title}</h1>
-          {subtitle ? <p className="m-0 mt-1 text-[13px] text-text-soft">{subtitle}</p> : null}
+        <header className="shrink-0 border-b border-line bg-surface px-6 py-4 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="m-0 text-lg font-semibold">{title}</h1>
+            {subtitle ? <p className="m-0 mt-1 text-[13px] text-text-soft">{subtitle}</p> : null}
+          </div>
+          <Link
+            href="/login"
+            className="shrink-0 text-[13px] text-text-soft hover:text-text transition-colors"
+          >
+            로그인
+          </Link>
         </header>
         <div className="flex-1 p-6 overflow-auto">{children}</div>
       </main>
