@@ -6,6 +6,13 @@ import { Button } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
+const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+function isValidEmail(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.length > 0 && EMAIL_REGEX.test(trimmed);
+}
+
 interface AddMemberModalProps {
   open: boolean;
   onClose: () => void;
@@ -32,6 +39,10 @@ export function AddMemberModal({ open, onClose, workspaceId, workspaceName: init
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
       setError('이메일 주소를 입력해 주세요.');
+      return;
+    }
+    if (!isValidEmail(trimmedEmail)) {
+      setError('올바른 이메일 형식이 아닙니다.');
       return;
     }
 
