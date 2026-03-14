@@ -71,12 +71,14 @@ export default function LoginPage() {
         </p>
       ) : null}
 
-      <p className="m-0 mt-3 text-[13px] text-text-soft">
-        계정이 없으신가요?{' '}
-        <Link className="text-accent-soft hover:text-accent underline" href="/register">
+      <div className="mt-3 flex justify-center">
+        <Link
+          href="/register"
+          className="text-text-dim text-[13px] hover:text-text-soft transition-colors"
+        >
           회원가입
         </Link>
-      </p>
+      </div>
     </AuthCard>
   );
 }

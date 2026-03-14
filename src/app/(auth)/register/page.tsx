@@ -234,18 +234,6 @@ export default function RegisterPage() {
           <Button type="submit" loading={loading}>
             확인
           </Button>
-          <button
-            type="button"
-            onClick={() => {
-              setError('');
-              setOtpCode('');
-              setChallengeId('');
-              setStep(1);
-            }}
-            className="text-text-dim text-[13px] hover:text-text-soft"
-          >
-            이메일 변경
-          </button>
           <div className="mt-2 space-y-1">
             <p className="text-text-soft text-[13px]">
               {email}로 발송된 OTP 코드를 입력하세요.
@@ -253,6 +241,26 @@ export default function RegisterPage() {
             <p className="text-text-dim text-[11px]">
               인증 코드는 유효기간이 있습니다. 만료되면 이메일 변경 후 다시 요청해 주세요.
             </p>
+          </div>
+          <div className="flex justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                setError('');
+                setOtpCode('');
+                setChallengeId('');
+                setStep(1);
+              }}
+              className="text-text-dim text-[13px] hover:text-text-soft"
+            >
+              이메일 변경
+            </button>
+            <Link
+              href="/login"
+              className="text-text-dim text-[13px] hover:text-text-soft transition-colors"
+            >
+              로그인
+            </Link>
           </div>
         </form>
       )}
@@ -361,11 +369,16 @@ export default function RegisterPage() {
         </p>
       ) : null}
 
-      <p className="mt-3">
-        <Link className="text-accent-soft underline" href="/login">
-          로그인
-        </Link>
-      </p>
+      {step !== 2 && (
+        <div className="mt-3 flex justify-center">
+          <Link
+            href="/login"
+            className="text-text-dim text-[13px] hover:text-text-soft transition-colors"
+          >
+            로그인
+          </Link>
+        </div>
+      )}
     </AuthCard>
   );
 }
