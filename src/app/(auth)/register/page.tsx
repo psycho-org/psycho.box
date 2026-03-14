@@ -133,7 +133,7 @@ export default function RegisterPage() {
 
   return (
     <AuthCard title="회원가입">
-      <nav className="mb-6" aria-label="회원가입 단계">
+      <nav className="mb-5" aria-label="회원가입 단계">
         <div className="relative w-full" style={{ height: 42 }}>
           <svg
             className="absolute inset-0 w-full h-full"
@@ -200,8 +200,9 @@ export default function RegisterPage() {
         </div>
       </nav>
       {step === 1 && (
-        <form className="grid gap-3" onSubmit={handleOtpRequest}>
-          <label className="grid gap-1.5 text-[13px] text-text-soft">
+        <div className="min-h-[138px]">
+          <form className="grid gap-3" onSubmit={handleOtpRequest}>
+            <label className="grid gap-1.5 text-[13px] text-text-soft">
             이메일
             <input
               className="w-full border border-line rounded-[10px] bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
@@ -216,6 +217,7 @@ export default function RegisterPage() {
             OTP 요청
           </Button>
         </form>
+        </div>
       )}
 
       {step === 2 && (
