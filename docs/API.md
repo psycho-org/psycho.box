@@ -248,6 +248,7 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
 | GET | `/api/v1/workspaces/{workspaceId}` | JWT | 워크스페이스 상세 |
 | POST | `/api/v1/workspaces/{workspaceId}/transfer-owner` | JWT | 소유권 이전 |
 | DELETE | `/api/v1/workspaces/{workspaceId}` | JWT | 워크스페이스 삭제 |
+| GET | `/api/v1/workspaces/{workspaceId}/members` | JWT | 멤버 목록 조회 |
 | POST | `/api/v1/workspaces/{workspaceId}/members` | JWT | 멤버 추가 |
 | DELETE | `/api/v1/workspaces/{workspaceId}/members` | JWT | 멤버 제거 |
 
@@ -312,6 +313,24 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
 {
   "id": "string (UUID)"
 }
+```
+
+### GET /api/v1/workspaces/{workspaceId}/members
+
+**Path Parameters**: `workspaceId` (UUID)
+
+**Response (data)**: 멤버 목록 (워크스페이스 멤버만 조회 가능)
+
+```json
+[
+  {
+    "accountId": "string (UUID)",
+    "email": "string",
+    "name": "string",
+    "role": "OWNER | CREW",
+    "joinedAt": "string (ISO 8601)"
+  }
+]
 ```
 
 ### POST /api/v1/workspaces/{workspaceId}/members

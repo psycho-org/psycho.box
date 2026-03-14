@@ -1,86 +1,115 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
 
 interface AppShellProps {
-  children: React.ReactNode;
-  workspaceId?: string;
-  workspaceName?: string;
-  title?: string;
+  workspaceId: string;
+  workspaceName: string;
+  title: string;
   subtitle?: string;
+  children: React.ReactNode;
 }
 
-const tabs = [
-  { key: 'workspaces', label: '워크스페이스', href: '/workspaces' },
-  { key: 'board', label: '스프린트 보드', href: '/board' },
-  { key: 'tasks', label: '태스크', href: '/tasks' },
-  { key: 'members', label: '멤버 관리', href: '/members' },
-];
+function BoardIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="7" height="7" x="3" y="3" rx="1" />
+      <rect width="7" height="7" x="14" y="3" rx="1" />
+      <rect width="7" height="7" x="14" y="14" rx="1" />
+      <rect width="7" height="7" x="3" y="14" rx="1" />
+    </svg>
+  );
+}
 
-export function AppShell({ children, workspaceId, workspaceName, title, subtitle }: AppShellProps) {
-  const pathname = usePathname();
-  const base = workspaceId ? `/workspaces/${workspaceId}` : '/workspaces';
+function ListIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="8" x2="21" y1="6" y2="6" />
+      <line x1="8" x2="21" y1="12" y2="12" />
+      <line x1="8" x2="21" y1="18" y2="18" />
+      <line x1="3" x2="3.01" y1="6" y2="6" />
+      <line x1="3" x2="3.01" y1="12" y2="12" />
+      <line x1="3" x2="3.01" y1="18" y2="18" />
+    </svg>
+  );
+}
+
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+export function AppShell({ workspaceId, workspaceName, title, subtitle, children }: AppShellProps) {
+  const basePath = `/workspaces/${workspaceId}`;
+  const navItems = [
+    { href: `${basePath}/board`, label: '보드', icon: BoardIcon },
+    { href: `${basePath}/tasks`, label: '태스크', icon: ListIcon },
+    { href: `${basePath}/members`, label: '멤버', icon: UsersIcon },
+  ];
 
   return (
-    <div className="h-screen grid grid-cols-[240px_1fr] max-lg:grid-cols-1 max-lg:grid-rows-[auto_1fr]">
-      <aside className="bg-surface border-r border-line flex flex-col max-lg:border-r-0 max-lg:border-b max-lg:border-line">
-        <div className="shrink-0 px-3 pt-4 pb-2 border-b border-line">
-          <Link href="/workspaces" className="block mb-3 text-xl tracking-[-0.02em] font-bold px-1">
-            Psycho<span className="text-accent-soft">.Box</span>
-          </Link>
-          <WorkspaceSwitcher
-            currentWorkspaceId={workspaceId}
-            currentWorkspaceName={workspaceName}
-          />
+    <div className="min-h-screen bg-bg flex">
+      <aside className="w-56 shrink-0 border-r border-line bg-surface flex flex-col">
+        <div className="p-2.5 border-b border-line">
+          <WorkspaceSwitcher currentWorkspaceId={workspaceId} currentWorkspaceName={workspaceName} />
         </div>
-
-        <nav className="py-2 px-3 flex-1">
-          <p className="m-0 mb-1.5 text-[10px] tracking-[0.08em] uppercase text-text-dim px-2">메인</p>
-          {workspaceId
-            ? tabs.slice(1).map((tab) => {
-                const href = `${base}${tab.href}`;
-                const active = pathname === href;
-                return (
-                  <Link
-                    key={tab.key}
-                    className={`block mb-0.5 py-2 px-2.5 rounded-lg text-[13px] ${
-                      active ? 'bg-accent-dim text-accent-soft' : 'text-text-soft hover:bg-surface-2 hover:text-text'
-                    }`}
-                    href={href}
-                  >
-                    {tab.label}
-                  </Link>
-                );
-              })
-            : (
-              <Link
-                className="block mb-0.5 py-2 px-2.5 rounded-lg text-[13px] bg-accent-dim text-accent-soft"
-                href="/workspaces"
-              >
-                워크스페이스
-              </Link>
-            )}
+        <nav className="p-2 flex flex-col gap-0.5">
+          {navItems.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] text-text-soft hover:bg-surface-2 hover:text-text transition-colors"
+            >
+              <Icon className="shrink-0 text-text-dim" />
+              {label}
+            </Link>
+          ))}
         </nav>
       </aside>
 
-      <main className="grid grid-rows-[64px_1fr] min-w-0 overflow-auto">
-        <header className="h-[64px] shrink-0 border-b border-line bg-surface flex items-center justify-between gap-3 px-5">
-          <div className="text-[13px] text-text-soft flex gap-1.5">
-            {workspaceName ? (
-              <>
-                <span>{workspaceName}</span>
-                <span>/</span>
-              </>
-            ) : null}
-            <span className="text-text font-semibold">{title ?? 'Psycho.Box'}</span>
-          </div>
-          {subtitle ? <p className="m-0 text-text-dim text-xs truncate">{subtitle}</p> : null}
+      <main className="flex-1 min-w-0 flex flex-col">
+        <header className="shrink-0 border-b border-line bg-surface px-6 py-4">
+          <h1 className="m-0 text-lg font-semibold">{title}</h1>
+          {subtitle ? <p className="m-0 mt-1 text-[13px] text-text-soft">{subtitle}</p> : null}
         </header>
-        <section className="overflow-auto p-[18px] grid gap-3.5 bg-gradient-to-b from-[#10131a] to-bg">
-          {children}
-        </section>
+        <div className="flex-1 p-6 overflow-auto">{children}</div>
       </main>
     </div>
   );

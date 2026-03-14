@@ -65,6 +65,19 @@ export const ERROR_MESSAGES: Record<string, string> = {
   WORKSPACE_TRANSFER_OWNERSHIP_FAILED: '소유권 양도에 실패했습니다.',
   WORKSPACE_ADD_MEMBER_FAILED: '멤버 추가에 실패했습니다.',
   WORKSPACE_REMOVE_MEMBER_FAILED: '멤버 제거에 실패했습니다.',
+
+  // Server (백엔드/네트워크)
+  INTERNAL_SERVER_ERROR: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+};
+
+/** 영문 에러 메시지 → 한글 치환 (message 필드가 영문일 때) */
+const MESSAGE_ALIASES: Record<string, string> = {
+  'Internal Server Error': '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+  'Request failed': '요청에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+  'Unauthorized': '인증이 필요합니다.',
+  'Forbidden': '접근 권한이 없습니다.',
+  'Not Found': '요청한 항목을 찾을 수 없습니다.',
+  'Bad Request': '입력값을 확인해 주세요.',
 };
 
 /** code 없을 때 status 기반 기본 메시지 */
@@ -99,8 +112,13 @@ export function getErrorMessage(options: {
     return FALLBACK_BY_STATUS[status];
   }
 
-  if (message && typeof message === 'string' && message.trim()) {
-    return message;
+  const trimmed = message && typeof message === 'string' ? message.trim() : '';
+  if (trimmed && MESSAGE_ALIASES[trimmed]) {
+    return MESSAGE_ALIASES[trimmed];
+  }
+
+  if (trimmed) {
+    return trimmed;
   }
 
   return DEFAULT_FALLBACK;

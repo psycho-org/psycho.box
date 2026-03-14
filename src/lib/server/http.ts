@@ -73,6 +73,7 @@ export async function handleLogin(request: NextRequest): Promise<NextResponse> {
   });
 
   const { response, payload } = await relayWithPayload(backendResponse);
+  console.log('[API] POST /auth/login', { status: backendResponse.status, payload });
   if (!backendResponse.ok) return response;
 
   const { accessToken, userId } = parseAuthData(payload);
@@ -119,7 +120,8 @@ export async function handleLogout(): Promise<NextResponse> {
     cache: 'no-store',
   });
 
-  const response = await relayJsonResponse(backendResponse);
+  const { response, payload } = await relayWithPayload(backendResponse);
+  console.log('[API] POST /auth/logout', { status: backendResponse.status, payload });
   response.cookies.delete(ACCESS_TOKEN_COOKIE);
   response.cookies.delete(REFRESH_TOKEN_COOKIE);
   response.cookies.delete(USER_ID_COOKIE);

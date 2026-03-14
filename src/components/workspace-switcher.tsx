@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRef, useState, useEffect } from 'react';
 import { apiRequest } from '@/lib/client';
 import { CreateWorkspaceModal } from '@/components/create-workspace-modal';
+import { getErrorMessage } from '@/lib/error-messages';
 
 interface Workspace {
   id: string;
@@ -104,13 +105,13 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
     apiRequest<{ id: string; title?: string; name?: string }[]>('/api/real/workspaces')
       .then((result) => {
         if (!result.ok) {
-          setError(result.message ?? '워크스페이스 목록을 불러올 수 없습니다.');
+          setError(getErrorMessage({ code: result.code, message: result.message, status: result.status }));
           return;
         }
         const raw = result.data;
         setWorkspaces(Array.isArray(raw) ? raw.map((item) => toWorkspace(item)) : []);
       })
-      .catch(() => setError('워크스페이스 목록을 불러올 수 없습니다.'))
+      .catch(() => setError(getErrorMessage({ status: 500 })))
       .finally(() => setLoading(false));
   }, [open]);
 

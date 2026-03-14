@@ -17,6 +17,7 @@ export async function GET() {
   });
 
   const data = await res.json().catch(() => ({}));
+  console.log('[API] GET /workspaces', { status: res.status, data });
   return Response.json(data, { status: res.status });
 }
 
@@ -51,5 +52,6 @@ export async function POST(request: Request) {
   });
 
   const data = await res.json().catch(() => ({}));
+  console.log('[API] POST /workspaces', { status: res.status, data });
   return Response.json(data, { status: res.status });
 }

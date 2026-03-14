@@ -22,9 +22,10 @@ export async function apiRequest<T>(
   const payload = await response.json().catch(() => null);
 
   if (response.ok) {
-    const data = (payload && typeof payload === 'object' && 'data' in payload)
-      ? (payload as { data?: T }).data
-      : (payload as T);
+    const data =
+      payload && typeof payload === 'object' && 'data' in payload
+        ? (payload as { data?: T }).data
+        : (payload as T);
     return { ok: true, status: response.status, data };
   }
 
