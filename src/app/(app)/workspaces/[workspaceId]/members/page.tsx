@@ -110,7 +110,6 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
       workspaceId={workspaceId}
       workspaceName="워크스페이스"
       title="멤버 관리"
-      subtitle="멤버 목록, 초대"
     >
       <section className="bg-surface border border-line rounded-xl p-3.5 min-w-0 overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-2.5">
@@ -172,7 +171,7 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => (
+              {[...members].sort((a, b) => (a.role === 'OWNER' && b.role !== 'OWNER' ? -1 : a.role !== 'OWNER' && b.role === 'OWNER' ? 1 : 0)).map((member) => (
                 <tr key={member.membershipId} className="hover:bg-surface-2">
                   <td className="border-b border-line text-left text-[13px] py-2.5 px-2">
                     {member.name || '-'}
@@ -189,9 +188,9 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
           </table>
           </div>
         ) : (
-          <div className="w-full lg:w-1/2 min-w-0">
+          <div className="w-full min-w-0">
             <CardList
-              items={members}
+              items={[...members].sort((a, b) => (a.role === 'OWNER' && b.role !== 'OWNER' ? -1 : a.role !== 'OWNER' && b.role === 'OWNER' ? 1 : 0))}
               getItemId={(m) => m.membershipId}
               columns={3}
               emptyMessage="멤버가 없습니다."
