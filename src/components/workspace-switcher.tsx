@@ -148,7 +148,7 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
             : 'PB'}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="m-0 text-[13px] font-semibold truncate">{displayName}</p>
+          <p className="m-0 text-[13px] font-semibold truncate leading-none">{displayName}</p>
         </div>
         <ChevronDownIcon
           className={`shrink-0 text-text-dim transition-transform ${open ? 'rotate-180' : ''}`}

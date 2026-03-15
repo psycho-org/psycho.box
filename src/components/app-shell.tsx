@@ -24,7 +24,6 @@ interface AppShellProps {
   workspaceId: string;
   workspaceName: string;
   title: string;
-  subtitle?: string;
   children: React.ReactNode;
 }
 
@@ -93,7 +92,7 @@ function UsersIcon({ className }: { className?: string }) {
   );
 }
 
-export function AppShell({ workspaceId, workspaceName, title, subtitle, children }: AppShellProps) {
+export function AppShell({ workspaceId, workspaceName, title, children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const basePath = `/workspaces/${workspaceId}`;
   const navItems = [
@@ -120,7 +119,7 @@ export function AppShell({ workspaceId, workspaceName, title, subtitle, children
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-2.5 border-b border-line flex items-center justify-between gap-2 min-w-0">
+        <div className="h-14 px-2.5 border-b border-line flex items-center justify-between gap-2 min-w-0">
           <div className="min-w-0 flex-1">
             <WorkspaceSwitcher currentWorkspaceId={workspaceId} currentWorkspaceName={workspaceName} />
           </div>
@@ -149,7 +148,7 @@ export function AppShell({ workspaceId, workspaceName, title, subtitle, children
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col">
-        <header className="shrink-0 border-b border-line bg-surface px-4 lg:px-6 py-3 lg:py-4 flex items-center justify-between gap-2 min-w-0">
+        <header className="shrink-0 h-14 border-b border-line bg-surface px-4 lg:px-6 flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
@@ -159,9 +158,8 @@ export function AppShell({ workspaceId, workspaceName, title, subtitle, children
             >
               <MenuIcon className="size-5" />
             </button>
-            <div className="min-w-0">
-              <h1 className="m-0 text-base lg:text-lg font-semibold truncate">{title}</h1>
-              {subtitle ? <p className="m-0 mt-0.5 text-[12px] lg:text-[13px] text-text-soft truncate">{subtitle}</p> : null}
+            <div className="min-w-0 flex items-center">
+              <h1 className="m-0 text-base lg:text-lg font-semibold truncate leading-none">{title}</h1>
             </div>
           </div>
           <Link
