@@ -1,9 +1,9 @@
 'use client';
 
 import { use, useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
-import { TaskStatusDot, ViewModeToggle, CollapsibleTableList } from '@/components/ui';
+import { TaskStatusDot, CollapsibleTableList } from '@/components/ui';
 import { TaskCreateModal } from '@/components/task-create-modal';
 import { TaskRoadmap } from '@/components/task-roadmap';
 import { apiRequest } from '@/lib/client';
@@ -160,7 +160,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const [error, setError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalStatus, setCreateModalStatus] = useState<TaskStatus>('TODO');
-  const router = useRouter();
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view') as BoardView | null;
   const view: BoardView = viewParam && ['sprint', 'assignee', 'my', 'roadmap'].includes(viewParam)
@@ -342,13 +341,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     }));
   }, [view, tasks, myTasks, assigneeList]);
 
-  function setDisplay(mode: 'list' | 'kanban') {
-    const params = new URLSearchParams(searchParams.toString());
-    if (mode === 'kanban') params.delete('display');
-    else params.set('display', 'list');
-    router.push(`/workspaces/${workspaceId}/board?${params.toString()}`);
-  }
-
   const assigneeCount = assigneeList.list.length + (assigneeList.noAssigneeCount > 0 ? 1 : 0);
   const pageTitle =
     view === 'assignee' ? `${viewTitles[view]} (${assigneeCount})` : viewTitles[view];
@@ -360,9 +352,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       title={pageTitle}
     >
       <section className="bg-surface/90 border border-line/40 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center justify-end mb-5">
-          <ViewModeToggle value={display} onChange={setDisplay} />
-        </div>
         {loading ? (
           <p className="text-text-soft text-[13px]">태스크 로딩 중...</p>
         ) : error ? (

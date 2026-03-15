@@ -24,6 +24,9 @@ export { TaskStatusDot } from './task-status-dot';
 export { ViewModeToggle } from './view-mode-toggle';
 export type { ViewModeToggleProps, ViewDisplayMode } from './view-mode-toggle';
 
+export { ViewToggleFloating } from './view-toggle-floating';
+export type { ViewToggleFloatingProps } from './view-toggle-floating';
+
 export { CollapsibleTableList } from './collapsible-table-list';
 export type { CollapsibleTableListProps, CollapsibleTableGroup } from './collapsible-table-list';
 export type { TaskStatusDotProps } from './task-status-dot';

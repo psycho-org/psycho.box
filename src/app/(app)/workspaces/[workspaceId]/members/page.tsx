@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { use } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { AddMemberModal } from '@/components/add-member-modal';
 import { Snackbar } from '@/components/ui/snackbar';
-import { CardList, ViewModeToggle, CollapsibleTableList } from '@/components/ui';
+import { CardList, CollapsibleTableList } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
@@ -65,11 +66,13 @@ function RoleBadge({ role, iconOnly = false, className = '' }: { role: Workspace
 
 export default function MembersPage({ params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = use(params);
+  const searchParams = useSearchParams();
+  const viewMode: ViewMode = searchParams.get('display') === 'card' ? 'card' : 'list';
+
   const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   const loadMembers = useCallback(() => {
     void apiRequest<Member[]>(`/api/real/workspaces/${workspaceId}/members`).then((result) => {
@@ -111,11 +114,6 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-2.5">
           <h3 className="m-0 text-base shrink-0">멤버 목록</h3>
           <div className="flex items-center gap-1">
-            <ViewModeToggle
-              value={viewMode === 'list' ? 'list' : 'kanban'}
-              onChange={(v) => setViewMode(v === 'list' ? 'list' : 'card')}
-              kanbanLabel="카드"
-            />
             <button
               type="button"
               onClick={() => setAddModalOpen(true)}

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
 import { UserMenu } from '@/components/user-menu';
-import { ViewModeToggle } from '@/components/ui';
+import { ViewToggleFloating } from '@/components/ui';
+import { VIEW_TOGGLE_PAGES } from '@/lib/view-toggle-config';
 
 function MenuIcon({ className }: { className?: string }) {
   return (
@@ -160,17 +161,21 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
   const router = useRouter();
   const basePath = `/workspaces/${workspaceId}`;
   const boardView = searchParams.get('view') || 'sprint';
-  const boardDisplay = searchParams.get('display') === 'list' ? 'list' : 'kanban';
-
-  const isBoardPage = pathname === `${basePath}/board`;
 
   const closeMobile = () => setMobileMenuOpen(false);
 
-  function setBoardDisplay(mode: 'list' | 'kanban') {
+  const isBoardPage = pathname === `${basePath}/board`;
+
+  /** 현재 경로에 맞는 뷰 토글 설정 (config 기반) */
+  const viewToggleConfig = VIEW_TOGGLE_PAGES.find((c) => pathname.endsWith(c.pathEndsWith));
+
+  function setViewDisplay(mode: 'list' | 'kanban') {
+    if (!viewToggleConfig) return;
     const params = new URLSearchParams(searchParams.toString());
-    if (mode === 'kanban') params.delete('display');
-    else params.set('display', 'list');
-    router.push(`${basePath}/board?${params.toString()}`);
+    const value = mode === 'list' ? viewToggleConfig.listParamValue : viewToggleConfig.cardParamValue;
+    if (value) params.set('display', value);
+    else params.delete('display');
+    router.push(`${pathname}?${params.toString()}`);
   }
 
   const boardNavItems = [
@@ -211,7 +216,7 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
             <XIcon className="size-5" />
           </button>
         </div>
-        <nav className="p-2.5 flex flex-col gap-0.5">
+        <nav className="p-2.5 flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto">
           {/* 스프린트, 담당자, 나의 테스크, 로드맵 */}
           {boardNavItems.map(({ view, label, icon: Icon }) => (
             <Link
@@ -228,14 +233,6 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
               {label}
             </Link>
           ))}
-
-          {/* 보드 페이지일 때 리스트/칸반 토글 */}
-          {isBoardPage && (
-            <div className="mt-3 pt-3 border-t border-line/60">
-              <p className="text-[11px] font-medium text-text-dim uppercase tracking-wider mb-2 px-1">보기</p>
-              <ViewModeToggle value={boardDisplay} onChange={setBoardDisplay} />
-            </div>
-          )}
 
           {/* Analysis */}
           <Link
@@ -266,6 +263,15 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
           </Link>
         </nav>
       </aside>
+
+      {/* 리스트/칸반 전환 토글 - config 기반, 어떤 페이지든 등록 가능 */}
+      {viewToggleConfig && (
+        <ViewToggleFloating
+          value={viewToggleConfig.getValue(searchParams.get('display'))}
+          onChange={setViewDisplay}
+          kanbanLabel={viewToggleConfig.kanbanLabel}
+        />
+      )}
 
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="shrink-0 h-14 border-b border-line/80 bg-surface px-4 lg:px-6 flex items-center justify-between gap-2 min-w-0">
