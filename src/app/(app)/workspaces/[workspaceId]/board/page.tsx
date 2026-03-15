@@ -15,12 +15,35 @@ interface Task {
   assignee?: { id: string; name: string; email: string } | null;
 }
 
-const COLUMNS: { label: string; status: TaskStatus }[] = [
-  { label: '할일', status: 'TODO' },
-  { label: '진행중', status: 'IN_PROGRESS' },
-  { label: '검토중', status: 'CANCELLED' },
-  { label: '완료', status: 'DONE' },
+const COLUMNS: { label: string; status: TaskStatus; description: string }[] = [
+  { label: '할일', status: 'TODO', description: '시작 전 대기 중' },
+  { label: '진행중', status: 'IN_PROGRESS', description: '현재 진행 중' },
+  { label: '검토중', status: 'CANCELLED', description: '검토 대기 중' },
+  { label: '완료', status: 'DONE', description: '완료됨' },
 ];
+
+/** 제목에서 [TAG] 패턴 추출 */
+function parseTagsFromTitle(title: string): { tags: string[]; displayTitle: string } {
+  const tags: string[] = [];
+  let rest = title;
+  const match = rest.match(/^(\[[A-Za-z0-9_-]+\]\s*)+/);
+  if (match) {
+    const prefix = match[0];
+    rest = rest.slice(prefix.length).trim();
+    const tagMatches = prefix.matchAll(/\[([A-Za-z0-9_-]+)\]/g);
+    for (const m of tagMatches) tags.push(m[1]);
+  }
+  return { tags, displayTitle: rest || title };
+}
+
+const TAG_COLORS: Record<string, string> = {
+  FEAT: 'bg-blue/20 text-blue border-blue/30',
+  FIX: 'bg-red/20 text-red border-red/30',
+  REFACTOR: 'bg-purple/20 text-purple border-purple/30',
+  DOCS: 'bg-green/20 text-green border-green/30',
+  TEST: 'bg-orange/20 text-orange border-orange/30',
+  DEFAULT: 'bg-surface-3 text-text-soft border-line',
+};
 
 function PlusIcon({ className }: { className?: string }) {
   return (
@@ -28,6 +51,33 @@ function PlusIcon({ className }: { className?: string }) {
       <path d="M12 5v14" />
       <path d="M5 12h14" />
     </svg>
+  );
+}
+
+function MoreIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+      <circle cx="5" cy="12" r="1" />
+    </svg>
+  );
+}
+
+function AssigneeAvatar({ assignee }: { assignee?: { id: string; name: string } | null }) {
+  const initials = assignee?.name
+    ? assignee.name.slice(0, 2).toUpperCase()
+    : '?';
+  const hue = assignee ? (assignee.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360) : 0;
+  const bgColor = assignee ? `hsl(${hue}, 55%, 45%)` : 'var(--color-surface-3)';
+  return (
+    <div
+      className={`size-8 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-surface shadow-sm ${assignee ? 'text-white' : 'text-text-dim'}`}
+      style={{ backgroundColor: bgColor }}
+      title={assignee?.name ?? '담당자 없음'}
+    >
+      {initials}
+    </div>
   );
 }
 
@@ -75,56 +125,109 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       title="스프린트 보드"
       subtitle="Kanban (할일/진행중/검토중/완료)"
     >
-      <section className="bg-surface border border-line rounded-xl p-3.5">
-        <h3 className="m-0 mb-2.5 text-base">Kanban Board</h3>
+      <section className="bg-surface border border-line rounded-2xl p-4">
         {loading ? (
           <p className="text-text-soft text-[13px]">태스크 로딩 중...</p>
         ) : error ? (
           <p className="text-red text-[13px]">{error}</p>
-        ) : null}
-        <div className="mt-4 grid grid-cols-4 gap-2.5 max-lg:grid-cols-1">
-          {COLUMNS.map(({ label, status }) => (
-            <div
-              key={status}
-              className="border border-line rounded-[10px] bg-surface-2 p-2.5 min-h-[180px]"
-            >
-              <h4 className="m-0 mb-2.5 text-xs uppercase tracking-[0.05em] text-text-soft">
-                {label}
-              </h4>
-              <div className="space-y-2">
-                {tasksByStatus(status).map((task) => (
-                  <div
-                    key={task.id}
-                    className="rounded-lg border border-line bg-surface p-2.5 text-[13px] flex items-start gap-2"
-                  >
-                    <TaskStatusDot status={task.status} className="mt-1.5" />
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <p className="m-0 font-medium truncate">{task.title}</p>
-                      {task.assignee && (
-                        <p className="m-0 text-xs text-text-dim truncate font-mono" title={task.assignee.id}>
-                          담당자 ID: {task.assignee.id}
-                        </p>
-                      )}
-                      {task.dueDate && (
-                        <p className="m-0 text-xs text-text-dim">
-                          업무 종료일: {new Date(task.dueDate).toLocaleDateString('ko-KR')}
-                        </p>
-                      )}
+        ) : (
+          <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-1">
+            {COLUMNS.map(({ label, status, description }) => {
+              const items = tasksByStatus(status);
+              return (
+                <div
+                  key={status}
+                  className="flex flex-col min-w-0 rounded-xl bg-surface-2 border border-line overflow-hidden"
+                >
+                  {/* 컬럼 헤더 */}
+                  <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <TaskStatusDot status={status} className="size-2.5" />
+                        <h4 className="m-0 text-[14px] font-semibold text-text truncate">
+                          {label}
+                        </h4>
+                      </div>
+                      <p className="m-0 text-[11px] text-text-dim">{description}</p>
+                      <p className="m-0 mt-1 text-[11px] text-text-soft font-medium">
+                        {items.length}개
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"
+                        aria-label="더보기"
+                      >
+                        <MoreIcon className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openCreateModal(status)}
+                        className="p-1.5 rounded-lg hover:bg-accent-dim text-text-dim hover:text-accent-soft"
+                        aria-label="태스크 추가"
+                      >
+                        <PlusIcon className="size-4" />
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => openCreateModal(status)}
-                className="mt-2 w-full rounded-lg border border-dashed border-line-2 bg-transparent p-3 flex items-center justify-center gap-2 text-text-dim hover:border-accent hover:text-accent-soft hover:bg-accent-dim/50 transition-colors"
-              >
-                <PlusIcon className="size-4" />
-                <span className="text-[13px]">태스크 추가</span>
-              </button>
-            </div>
-          ))}
-        </div>
+                  {/* 카드 목록 */}
+                  <div className="flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px]">
+                    {items.map((task) => {
+                      const { tags, displayTitle } = parseTagsFromTitle(task.title);
+                      const shortId = task.id.slice(0, 8);
+                      return (
+                        <div
+                          key={task.id}
+                          className="group rounded-xl border border-line bg-surface p-3 hover:border-line-2 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <TaskStatusDot status={task.status} className="size-2 shrink-0" />
+                              <span className="text-[11px] font-mono text-text-dim truncate">
+                                #{shortId}
+                              </span>
+                            </div>
+                            <AssigneeAvatar assignee={task.assignee} />
+                          </div>
+                          <p className="m-0 text-[13px] font-medium text-text line-clamp-2 mb-2">
+                            {displayTitle}
+                          </p>
+                          {tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {tags.map((t) => (
+                                <span
+                                  key={t}
+                                  className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${TAG_COLORS[t.toUpperCase()] ?? TAG_COLORS.DEFAULT}`}
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {task.dueDate && (
+                            <p className="m-0 mt-2 text-[11px] text-text-dim">
+                              {new Date(task.dueDate).toLocaleDateString('ko-KR')}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* 추가 버튼 */}
+                  <button
+                    type="button"
+                    onClick={() => openCreateModal(status)}
+                    className="m-3 py-2.5 rounded-xl border border-dashed border-line-2 bg-transparent flex items-center justify-center gap-2 text-text-dim hover:border-accent hover:text-accent-soft hover:bg-accent-dim/30 transition-colors text-[13px]"
+                  >
+                    <PlusIcon className="size-4" />
+                    태스크 추가
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
       <TaskCreateModal
         open={createModalOpen}
