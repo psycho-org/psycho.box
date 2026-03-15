@@ -18,6 +18,14 @@
   --color-red: #ff4d6d;
   --color-blue: #4fb3f6;
   --color-yellow: #ffd166;
+  --color-purple: #a78bfa;
+
+  /* Task status dot colors (톤 통일) */
+  --color-task-todo: #ffd166;
+  --color-task-inprogress: #3ecf8e;
+  --color-task-done: #a78bfa;
+  --color-task-cancelled: #6b7280;
+  --color-task-backlog: #9ca3af; /* 테두리만, 투명 내부 */
 
   --breakpoint-lg: 960px;
 }

@@ -19,6 +19,12 @@ export type { ListTableProps, ListTableColumn } from './list-table';
 export { CardList } from './card-list';
 export type { CardListProps } from './card-list';
 
+export { TaskStatusDot } from './task-status-dot';
+export type { TaskStatusDotProps } from './task-status-dot';
+
+export { DatePicker } from './date-picker';
+export type { DatePickerProps, DatePickerMode, DatePickerValue } from './date-picker';
+
 export { Roadmap } from './roadmap';
 export { RoadmapItem } from './roadmap-item';
 export type { RoadmapProps } from './roadmap';
