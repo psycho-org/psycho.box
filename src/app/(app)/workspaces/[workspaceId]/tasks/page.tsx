@@ -42,7 +42,6 @@ export default function TasksPage({ params }: { params: Promise<{ workspaceId: s
       workspaceId={workspaceId}
       workspaceName="워크스페이스"
       title="태스크"
-      subtitle="카드/리스트 뷰 전환, 백로그/로드맵/내 태스크 필터"
     >
       <section className="bg-surface border border-line rounded-xl p-3.5">
         <h3 className="m-0 mb-2.5 text-base">모든 태스크</h3>
