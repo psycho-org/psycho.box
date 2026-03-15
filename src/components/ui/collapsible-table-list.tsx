@@ -13,10 +13,12 @@ export interface CollapsibleTableGroup<T> {
 
 export interface CollapsibleTableListProps<T> {
   groups: CollapsibleTableGroup<T>[];
-  columns: { key: string; label: string; render: (item: T) => React.ReactNode }[];
+  columns: { key: string; label: string; render: (item: T) => React.ReactNode; width?: string }[];
   getItemId: (item: T) => string;
   emptyMessage?: string;
   defaultExpanded?: boolean;
+  /** 행별 추가 className (예: 경고 테두리) */
+  getItemRowClassName?: (item: T) => string;
 }
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
@@ -43,6 +45,7 @@ export function CollapsibleTableList<T>({
   getItemId,
   emptyMessage = '항목이 없습니다.',
   defaultExpanded = true,
+  getItemRowClassName,
 }: CollapsibleTableListProps<T>) {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
     new Set(defaultExpanded ? groups.map((g) => g.key) : []),
@@ -97,7 +100,12 @@ export function CollapsibleTableList<T>({
             {/* 테이블 */}
             {isExpanded && (
               <div className="border-t border-line">
-                <table className="w-full min-w-[360px] border-collapse">
+                <table className="w-full min-w-[360px] border-collapse table-fixed">
+                  <colgroup>
+                    {columns.map((col) => (
+                      <col key={col.key} style={col.width ? { width: col.width } : undefined} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr>
                       {columns.map((col) => (
@@ -124,10 +132,10 @@ export function CollapsibleTableList<T>({
                       group.items.map((item) => (
                         <tr
                           key={getItemId(item)}
-                          className="border-b border-line/60 last:border-b-0 hover:bg-surface-2/30"
+                          className={`border-b border-line/60 last:border-b-0 hover:bg-surface-2/30 ${getItemRowClassName?.(item) ?? ''}`}
                         >
                           {columns.map((col) => (
-                            <td key={col.key} className="py-2 px-3 text-[13px]">
+                            <td key={col.key} className="py-2 px-3 text-[13px] align-top overflow-hidden">
                               {col.render(item)}
                             </td>
                           ))}

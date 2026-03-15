@@ -61,7 +61,7 @@ export default function AnalysisPage({
       title="분석"
     >
       <div className="max-w-2xl space-y-6">
-        <section className="rounded-2xl border border-line/60 bg-surface/95 p-6 shadow-sm">
+        <section className="rounded-2xl border border-line/40 bg-surface/90 p-6 shadow-sm">
           <h2 className="text-base font-semibold mb-4">스프린트 분석 요청</h2>
           <p className="text-[13px] text-text-soft mb-4">
             스프린트 ID를 입력하면 AI 분석을 요청합니다. 결과는 API 준비 후 표시됩니다.
@@ -93,7 +93,7 @@ export default function AnalysisPage({
           )}
         </section>
 
-        <section className="rounded-2xl border border-line/60 bg-surface/95 p-6 shadow-sm">
+        <section className="rounded-2xl border border-line/40 bg-surface/90 p-6 shadow-sm">
           <div className="flex items-center justify-between gap-2 mb-4">
             <h2 className="text-base font-semibold m-0">분석 결과</h2>
             <ViewModeToggle value={resultDisplay} onChange={setResultDisplay} />

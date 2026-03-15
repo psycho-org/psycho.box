@@ -25,7 +25,39 @@ interface Task {
   status: TaskStatus;
   dueDate?: string | null;
   assignee?: { id: string; name: string; email: string } | null;
+  sprintId?: string | null;
+  sprintEndDate?: string | null;
 }
+
+/** 마감일 지남(주황) / 스프린트 종료(빨강) 여부 */
+function getTaskAlertType(
+  task: Task,
+  sprintEndDate?: string | null,
+): 'overdue' | 'sprint-ended' | null {
+  const isDone = task.status === 'DONE' || task.status === 'CANCELLED';
+  if (isDone) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const overdue = task.dueDate && new Date(task.dueDate) < today;
+  if (overdue) return 'overdue';
+
+  const sprintEnded = sprintEndDate && new Date(sprintEndDate) < today;
+  if (sprintEnded) return 'sprint-ended';
+
+  return null;
+}
+
+/** 기한 지남 표시: 은은한 배경 + 날짜 색상 */
+const ALERT_BG = {
+  overdue: 'bg-[rgba(232,165,74,0.06)]',
+  'sprint-ended': 'bg-[rgba(217,107,107,0.06)]',
+} as const;
+const ALERT_DATE_COLOR = {
+  overdue: 'text-[#e8a54a]',
+  'sprint-ended': 'text-[#d96b6b]',
+} as const;
 
 const COLUMNS: { label: string; status: TaskStatus; description: string }[] = [
   { label: '할일', status: 'TODO', description: '시작 전 대기 중' },
@@ -90,6 +122,12 @@ function ChevronIcon({ className, expanded }: { className?: string; expanded: bo
   );
 }
 
+/** ID 기반 고정 색상 (같은 ID면 항상 같은 색) */
+function colorFromId(id: string): string {
+  const hue = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+  return `hsl(${hue}, 55%, 45%)`;
+}
+
 function AssigneeAvatar({
   assignee,
   className,
@@ -100,8 +138,7 @@ function AssigneeAvatar({
   const initials = assignee?.name
     ? assignee.name.slice(0, 2).toUpperCase()
     : '?';
-  const hue = assignee ? (assignee.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360) : 0;
-  const bgColor = assignee ? `hsl(${hue}, 55%, 45%)` : 'var(--color-surface-3)';
+  const bgColor = assignee ? colorFromId(assignee.id) : 'var(--color-surface-3)';
   return (
     <div
       className={`shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-surface shadow-sm ${assignee ? 'text-white' : 'text-text-dim'} ${className ?? 'size-8'}`}
@@ -134,10 +171,28 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const [assigneesExpanded, setAssigneesExpanded] = useState(true);
   const [selectedAssignee, setSelectedAssignee] = useState<AssigneeFilterKey | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
 
   useEffect(() => {
     setCurrentUserId(getCurrentUserId());
   }, []);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    apiRequest<{ sprintId?: string; endDate?: string }[]>(
+      `/api/real/workspaces/${workspaceId}/sprints`,
+    )
+      .then((result) => {
+        const raw = result.data;
+        const list = Array.isArray(raw) ? raw : [];
+        const withEndDate = list.filter((s) => s?.endDate);
+        const sorted = withEndDate.sort(
+          (a, b) => new Date(b!.endDate!).getTime() - new Date(a!.endDate!).getTime(),
+        );
+        setSprintEndDate(sorted[0]?.endDate ?? null);
+      })
+      .catch(() => setSprintEndDate(null));
+  }, [workspaceId]);
 
   /** 담당자별 목록 (id, name, count) + 담당자 없음 */
   const assigneeList = useMemo(() => {
@@ -224,29 +279,20 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
 
   /** 리스트 뷰용 그룹 데이터 (대분류별 접기) */
   const listGroups = useMemo(() => {
-    const source = view === 'my' ? myTasks : view === 'assignee' ? filteredTasks : tasks;
+    const source = view === 'my' ? myTasks : tasks;
 
-    if (view === 'assignee' && selectedAssignee) {
-      // 담당자 선택 시: 상태별 그룹
-      return COLUMNS.map(({ label, status }) => ({
-        key: status,
-        label,
-        count: source.filter((t) => t.status === status).length,
-        items: source.filter((t) => t.status === status).sort((a, b) => {
-          const aDate = a.dueDate ? new Date(a.dueDate).getTime() : 0;
-          const bDate = b.dueDate ? new Date(b.dueDate).getTime() : 0;
-          return aDate - bDate;
-        }),
-        accentColor: TASK_STATUS_COLORS[status],
-      }));
-    }
-
-    if (view === 'assignee' && !selectedAssignee) {
-      // 담당자 미선택: 담당자별 그룹
-      const groups: { key: string; label: string; count: number; items: Task[] }[] = [];
+    if (view === 'assignee') {
+      // 담당자별 그룹 (접기 헤더로 담당자 목록 표시, ID 기반 색상으로 구분)
+      const groups: { key: string; label: string; count: number; items: Task[]; accentColor?: string }[] = [];
       for (const a of assigneeList.list) {
         const items = source.filter((t) => t.assignee?.id === a.id);
-        groups.push({ key: a.id, label: a.name, count: items.length, items });
+        groups.push({
+          key: a.id,
+          label: a.name,
+          count: items.length,
+          items,
+          accentColor: colorFromId(a.id),
+        });
       }
       if (assigneeList.noAssigneeCount > 0) {
         const items = source.filter((t) => !t.assignee);
@@ -294,7 +340,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       }),
       accentColor: TASK_STATUS_COLORS[status],
     }));
-  }, [view, tasks, myTasks, filteredTasks, selectedAssignee, assigneeList]);
+  }, [view, tasks, myTasks, assigneeList]);
 
   function setDisplay(mode: 'list' | 'kanban') {
     const params = new URLSearchParams(searchParams.toString());
@@ -303,13 +349,17 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     router.push(`/workspaces/${workspaceId}/board?${params.toString()}`);
   }
 
+  const assigneeCount = assigneeList.list.length + (assigneeList.noAssigneeCount > 0 ? 1 : 0);
+  const pageTitle =
+    view === 'assignee' ? `${viewTitles[view]} (${assigneeCount})` : viewTitles[view];
+
   return (
     <AppShell
       workspaceId={workspaceId}
       workspaceName="워크스페이스"
-      title={viewTitles[view]}
+      title={pageTitle}
     >
-      <section className="bg-surface/95 border border-line/60 rounded-2xl p-5 shadow-sm">
+      <section className="bg-surface/90 border border-line/40 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center justify-end mb-5">
           <ViewModeToggle value={display} onChange={setDisplay} />
         </div>
@@ -318,108 +368,62 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
         ) : error ? (
           <p className="text-red text-[13px]">{error}</p>
         ) : display === 'list' ? (
-          <div className={view === 'assignee' ? 'flex gap-4' : ''}>
-            {view === 'assignee' && (
-              <aside className="w-52 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setAssigneesExpanded((e) => !e)}
-                  className="w-full flex items-center gap-2 py-2 text-left text-[14px] font-semibold text-text"
-                >
-                  <ChevronIcon className="size-4 text-text-dim" expanded={assigneesExpanded} />
-                  담당자
-                </button>
-                {assigneesExpanded && (
-                  <div className="mt-1 space-y-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedAssignee(null)}
-                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
-                        selectedAssignee === null ? 'bg-accent-dim text-accent-soft' : 'hover:bg-surface-2 text-text'
-                      }`}
-                    >
-                      <span className="text-text-dim tabular-nums shrink-0">전체</span>
-                      <span className="tabular-nums text-text-dim">({tasks.length})</span>
-                    </button>
-                    {assigneeList.list.map((a) => (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => setSelectedAssignee(a.id)}
-                        className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
-                          selectedAssignee === a.id ? 'bg-accent-dim text-accent-soft' : 'hover:bg-surface-2 text-text'
-                        }`}
-                      >
-                        <AssigneeAvatar assignee={{ id: a.id, name: a.name }} className="size-6" />
-                        <span className="min-w-0 truncate flex-1">{a.name}</span>
-                        <span className="tabular-nums text-text-dim shrink-0">{a.count}</span>
-                      </button>
-                    ))}
-                    {assigneeList.noAssigneeCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedAssignee('none')}
-                        className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
-                          selectedAssignee === 'none' ? 'bg-accent-dim text-accent-soft' : 'hover:bg-surface-2 text-text'
-                        }`}
-                      >
-                        <AssigneeAvatar assignee={null} className="size-6" />
-                        <span className="min-w-0 truncate flex-1">담당자 없음</span>
-                        <span className="tabular-nums text-text-dim shrink-0">{assigneeList.noAssigneeCount}</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </aside>
-            )}
-            <div className="flex-1 min-w-0">
-              <CollapsibleTableList<Task>
-                groups={listGroups}
-                getItemId={(t) => t.id}
-                emptyMessage="태스크가 없습니다."
-                defaultExpanded={true}
-                columns={[
-                  {
-                    key: 'title',
-                    label: '제목',
-                    render: (task) => {
-                      const { displayTitle } = parseTagsFromTitle(task.title);
-                      return <span className="truncate block">{displayTitle}</span>;
-                    },
-                  },
-                  {
-                    key: 'status',
-                    label: '상태',
-                    render: (task) => (
-                      <span className="inline-flex items-center gap-1.5">
-                        <TaskStatusDot status={task.status} className="size-2.5" />
-                        {COLUMNS.find((c) => c.status === task.status)?.label ?? task.status}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: 'assignee',
-                    label: '담당자',
-                    render: (task) => {
-                      const name = task.assignee?.name ?? task.assignee?.email ?? '-';
-                      return <span className="truncate block">{name}</span>;
-                    },
-                  },
-                  {
-                    key: 'dueDate',
-                    label: '마감일',
-                    render: (task) => (
-                      <span className="text-text-dim">
-                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ko-KR') : '-'}
-                      </span>
-                    ),
-                  },
-                ]}
-              />
-            </div>
-          </div>
+          <CollapsibleTableList<Task>
+            groups={listGroups}
+            getItemId={(t) => t.id}
+            getItemRowClassName={(task) => {
+              const alertType = getTaskAlertType(task, sprintEndDate);
+              return alertType ? ALERT_BG[alertType] : '';
+            }}
+            emptyMessage="태스크가 없습니다."
+            defaultExpanded={true}
+            columns={[
+              {
+                key: 'title',
+                label: '제목',
+                render: (task) => {
+                  const { displayTitle } = parseTagsFromTitle(task.title);
+                  return <span className="truncate block">{displayTitle}</span>;
+                },
+              },
+              {
+                key: 'status',
+                label: '상태',
+                width: '100px',
+                render: (task) => (
+                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                    <TaskStatusDot status={task.status} className="size-2.5 shrink-0" />
+                    {COLUMNS.find((c) => c.status === task.status)?.label ?? task.status}
+                  </span>
+                ),
+              },
+              {
+                key: 'assignee',
+                label: '담당자',
+                width: '100px',
+                render: (task) => {
+                  const name = task.assignee?.name ?? task.assignee?.email ?? '-';
+                  return <span className="truncate block">{name}</span>;
+                },
+              },
+              {
+                key: 'dueDate',
+                label: '마감일',
+                width: '100px',
+                render: (task) => {
+                  const alertType = getTaskAlertType(task, sprintEndDate);
+                  const dateCls = alertType ? ALERT_DATE_COLOR[alertType] : 'text-text-dim';
+                  return (
+                    <span className={`whitespace-nowrap ${dateCls}`}>
+                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ko-KR') : '-'}
+                    </span>
+                  );
+                },
+              },
+            ]}
+          />
         ) : view === 'roadmap' ? (
-          <TaskRoadmap tasks={roadmapTasks} monthCount={2} />
+          <TaskRoadmap tasks={roadmapTasks} monthCount={2} sprintEndDate={sprintEndDate} />
         ) : view === 'assignee' ? (
           <div className="flex gap-4">
             {/* 담당자 사이드바 */}
@@ -444,7 +448,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                     }`}
                   >
                     <span className="text-text-dim tabular-nums shrink-0">전체</span>
-                    <span className="tabular-nums text-text-dim">({tasks.length})</span>
+                    <span className="tabular-nums text-text-dim">({assigneeCount})</span>
                   </button>
                   {assigneeList.list.map((a) => (
                     <button
@@ -493,7 +497,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                   return (
                     <div
                       key={status}
-                      className="flex flex-col min-w-0 rounded-xl bg-surface-2/80 border border-line/60 overflow-hidden"
+                      className="flex flex-col min-w-0 rounded-2xl bg-surface-2/70 border border-line/40 overflow-hidden"
                     >
                       <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
                         <div className="min-w-0 flex-1">
@@ -520,10 +524,11 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                       <div className="flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px]">
                         {items.map((task) => {
                           const { tags, displayTitle } = parseTagsFromTitle(task.title);
+                          const alertType = getTaskAlertType(task, sprintEndDate);
                           return (
                             <div
                               key={task.id}
-                              className="group rounded-xl border border-line/60 bg-surface/95 p-3 hover:border-line-2/80 hover:bg-surface/100 transition-all duration-200 cursor-pointer"
+                              className={`group rounded-2xl border border-line/40 bg-surface/90 p-3 hover:border-line-2/60 hover:bg-surface/95 transition-all duration-200 cursor-pointer shadow-sm ${alertType ? ALERT_BG[alertType] : ''}`}
                             >
                               <div className="flex items-start justify-between gap-2 mb-2">
                                 <div className="flex items-start gap-2 min-w-0 flex-1">
@@ -547,7 +552,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                                 </div>
                               )}
                               {task.dueDate && (
-                                <p className="m-0 mt-2 text-[11px] text-text-dim">
+                                <p className={`m-0 mt-2 text-[11px] ${alertType ? ALERT_DATE_COLOR[alertType] : 'text-text-dim'}`}>
                                   {new Date(task.dueDate).toLocaleDateString('ko-KR')}
                                 </p>
                               )}
@@ -568,7 +573,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
               return (
                 <div
                   key={status}
-                  className="flex flex-col min-w-0 rounded-xl bg-surface-2/80 border border-line/60 overflow-hidden"
+                  className="flex flex-col min-w-0 rounded-2xl bg-surface-2/70 border border-line/40 overflow-hidden"
                 >
                   {/* 컬럼 헤더 */}
                   <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
@@ -606,10 +611,11 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                   <div className="flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px]">
                     {items.map((task) => {
                       const { tags, displayTitle } = parseTagsFromTitle(task.title);
+                      const alertType = getTaskAlertType(task, sprintEndDate);
                       return (
                         <div
                           key={task.id}
-                          className="group rounded-xl border border-line/60 bg-surface/95 p-3 hover:border-line-2/80 hover:bg-surface/100 transition-all duration-200 cursor-pointer"
+                          className={`group rounded-2xl border border-line/40 bg-surface/90 p-3 hover:border-line-2/60 hover:bg-surface/95 transition-all duration-200 cursor-pointer shadow-sm ${alertType ? ALERT_BG[alertType] : ''}`}
                         >
                           <div className="flex items-start justify-between gap-2 mb-2">
                             <div className="flex items-start gap-2 min-w-0 flex-1">
@@ -633,7 +639,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                             </div>
                           )}
                           {task.dueDate && (
-                            <p className="m-0 mt-2 text-[11px] text-text-dim">
+                            <p className={`m-0 mt-2 text-[11px] ${alertType ? ALERT_DATE_COLOR[alertType] : 'text-text-dim'}`}>
                               {new Date(task.dueDate).toLocaleDateString('ko-KR')}
                             </p>
                           )}

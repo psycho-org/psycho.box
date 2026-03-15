@@ -127,7 +127,7 @@ export default function WorkspacesPage() {
           </Link>
         </header>
         <div className="flex-1 p-4 lg:p-6 overflow-auto min-w-0">
-          <section className="bg-surface border border-line rounded-xl p-3.5">
+          <section className="bg-surface/95 border border-line/60 rounded-2xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between gap-2.5 mb-2.5">
               <h3 className="m-0 text-base">워크스페이스 목록</h3>
               <button

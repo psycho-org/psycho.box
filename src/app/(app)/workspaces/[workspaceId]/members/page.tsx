@@ -107,7 +107,7 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
       workspaceName="워크스페이스"
       title="멤버 관리"
     >
-      <section className="bg-surface/95 border border-line/60 rounded-2xl p-5 min-w-0 overflow-hidden shadow-sm">
+      <section className="bg-surface/90 border border-line/40 rounded-2xl p-5 min-w-0 overflow-hidden shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-2.5">
           <h3 className="m-0 text-base shrink-0">멤버 목록</h3>
           <div className="flex items-center gap-1">

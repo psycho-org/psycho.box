@@ -38,12 +38,43 @@ function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / (24 * 60 * 60 * 1000));
 }
 
+function getTaskAlertType(
+  task: Task,
+  sprintEndDate?: string | null,
+): 'overdue' | 'sprint-ended' | null {
+  const isDone = task.status === 'DONE' || task.status === 'CANCELLED';
+  if (isDone) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const overdue = task.dueDate && new Date(task.dueDate) < today;
+  if (overdue) return 'overdue';
+
+  const sprintEnded = sprintEndDate && new Date(sprintEndDate) < today;
+  if (sprintEnded) return 'sprint-ended';
+
+  return null;
+}
+
+/** 기한 지남 표시: 은은한 배경 */
+const ALERT_BG = {
+  overdue: 'bg-[rgba(232,165,74,0.06)]',
+  'sprint-ended': 'bg-[rgba(217,107,107,0.06)]',
+} as const;
+const ALERT_BAR_COLOR = {
+  overdue: 'bg-[#e8a54a]/85 hover:bg-[#e8a54a]',
+  'sprint-ended': 'bg-[#d96b6b]/85 hover:bg-[#d96b6b]',
+} as const;
+
 export interface TaskRoadmapProps {
   tasks: Task[];
   monthCount?: number;
+  /** 스프린트 종료일 (빨간색 표시용) */
+  sprintEndDate?: string | null;
 }
 
-export function TaskRoadmap({ tasks, monthCount = 2 }: TaskRoadmapProps) {
+export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadmapProps) {
   const [monthOffset, setMonthOffset] = useState(0);
 
   const { scheduledTasks, unscheduledTasks } = useMemo(() => {
@@ -112,7 +143,7 @@ export function TaskRoadmap({ tasks, monthCount = 2 }: TaskRoadmapProps) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-line bg-surface-2">
+    <div className="overflow-x-auto rounded-2xl border border-line/60 bg-surface-2/95">
       <div className="flex min-w-0">
         {/* Left: Task list */}
         <div className="w-80 shrink-0 border-r border-line">
@@ -122,10 +153,11 @@ export function TaskRoadmap({ tasks, monthCount = 2 }: TaskRoadmapProps) {
           <div className="divide-y divide-line">
             {scheduledTasks.map((task, idx) => {
               const { displayTitle, tags } = parseTagsFromTitle(task.title);
+              const alertType = getTaskAlertType(task, sprintEndDate);
               return (
                 <div
                   key={task.id}
-                  className="flex items-start gap-2 px-3 py-2.5 min-h-[44px]"
+                  className={`flex items-start gap-2 px-3 py-2.5 min-h-[44px] ${alertType ? ALERT_BG[alertType] : ''}`}
                 >
                   <span className="text-[11px] text-text-dim tabular-nums shrink-0 w-5">
                     {idx + 1}
@@ -153,10 +185,11 @@ export function TaskRoadmap({ tasks, monthCount = 2 }: TaskRoadmapProps) {
                 </div>
                 {unscheduledTasks.map((task, idx) => {
                   const { displayTitle, tags } = parseTagsFromTitle(task.title);
+                  const alertType = getTaskAlertType(task, sprintEndDate);
                   return (
                     <div
                       key={task.id}
-                      className="flex items-start gap-2 px-3 py-2.5 min-h-[44px] bg-surface-3/50"
+                      className={`flex items-start gap-2 px-3 py-2.5 min-h-[44px] bg-surface-3/50 ${alertType ? ALERT_BG[alertType] : ''}`}
                     >
                       <span className="text-[11px] text-text-dim tabular-nums shrink-0 w-5">
                         {scheduledTasks.length + idx + 1}
@@ -234,6 +267,13 @@ export function TaskRoadmap({ tasks, monthCount = 2 }: TaskRoadmapProps) {
           <div className="relative" style={{ width: totalDays * dayWidth, minHeight: 44 * scheduledTasks.length }}>
             {scheduledTasks.map((task, idx) => {
               const style = getBarStyle(task);
+              const alertType = getTaskAlertType(task, sprintEndDate);
+              const barColor =
+                alertType === 'overdue'
+                  ? ALERT_BAR_COLOR['overdue']
+                  : alertType === 'sprint-ended'
+                    ? ALERT_BAR_COLOR['sprint-ended']
+                    : 'bg-accent/80 hover:bg-accent';
               return (
                 <div
                   key={task.id}
@@ -241,7 +281,7 @@ export function TaskRoadmap({ tasks, monthCount = 2 }: TaskRoadmapProps) {
                 >
                   {style && (
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 h-6 rounded-md bg-accent/80 hover:bg-accent transition-colors cursor-pointer"
+                      className={`absolute top-1/2 -translate-y-1/2 h-6 rounded-md ${barColor} transition-colors cursor-pointer`}
                       style={{
                         left: style.left + 4,
                         width: Math.min(style.width - 8, totalDays * dayWidth - style.left - 8),

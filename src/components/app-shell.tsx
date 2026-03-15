@@ -218,7 +218,7 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
               key={view}
               href={`${basePath}/board?view=${view}`}
               onClick={closeMobile}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-200 ${
                 isBoardPage && boardView === view
                   ? 'bg-accent-dim/80 text-accent-soft'
                   : 'text-text-soft hover:bg-surface-2/80 hover:text-text'
@@ -241,7 +241,7 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
           <Link
             href={`${basePath}/analysis`}
             onClick={closeMobile}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-200 ${
               pathname === `${basePath}/analysis`
                 ? 'bg-accent-dim/80 text-accent-soft'
                 : 'text-text-soft hover:bg-surface-2/80 hover:text-text'
@@ -255,7 +255,7 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
           <Link
             href={`${basePath}/members`}
             onClick={closeMobile}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-200 ${
               pathname === `${basePath}/members`
                 ? 'bg-accent-dim/80 text-accent-soft'
                 : 'text-text-soft hover:bg-surface-2/80 hover:text-text'
