@@ -1,13 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { AuthCard } from '@/components/auth-card';
 import { Button, OtpInput } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
 type Step = 1 | 2 | 3;
+
+const DEFAULT_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,64}$/;
+const DEFAULT_PASSWORD_MESSAGE = '12-64자, 대소문자·숫자·특수문자 포함';
 
 export default function RegisterPage() {
   const [step, setStep] = useState<Step>(1);
@@ -22,11 +25,26 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [passwordPolicy, setPasswordPolicy] = useState<{ regex: string; message: string } | null>(null);
 
-  const passwordValid =
-    password.length >= 12 &&
-    password.length <= 64 &&
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/.test(password);
+  useEffect(() => {
+    apiRequest<{ regex: string; message: string }>('/api/real/accounts/policies/password').then(
+      (res) => res.ok && res.data && setPasswordPolicy(res.data),
+    );
+  }, []);
+
+  const passwordRegex =
+    passwordPolicy?.regex != null
+      ? (() => {
+          try {
+            return new RegExp(passwordPolicy.regex);
+          } catch {
+            return DEFAULT_PASSWORD_REGEX;
+          }
+        })()
+      : DEFAULT_PASSWORD_REGEX;
+  const passwordMessage = passwordPolicy?.message ?? DEFAULT_PASSWORD_MESSAGE;
+  const passwordValid = passwordRegex.test(password);
 
   async function handleOtpRequest(event: FormEvent) {
     event.preventDefault();
@@ -293,7 +311,7 @@ export default function RegisterPage() {
               {password.length > 0 && (
                 <span
                   className="absolute right-10 top-1/2 -translate-y-1/2 flex items-center"
-                  title={passwordValid ? '규칙에 맞습니다' : '12-64자, 대소문자·숫자·특수문자 포함'}
+                  title={passwordValid ? '규칙에 맞습니다' : passwordMessage}
                   aria-hidden
                 >
                   {passwordValid ? (
@@ -329,7 +347,7 @@ export default function RegisterPage() {
               </button>
             </span>
             <span className="text-[11px] text-text-dim mt-0.5">
-              12-64자, 대소문자·숫자·특수문자 포함
+              {passwordMessage}
             </span>
           </label>
           <label className="grid gap-1.5 text-[13px] text-text-soft">

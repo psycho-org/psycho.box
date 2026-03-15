@@ -51,14 +51,18 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
   "error": "에러 상세",
   "code": "ERROR_CODE",
   "path": "/api/v1/...",
-  "details": { "field": ["validation message"] }
+  "details": { "field": ["validation message"] },
+  "meta": null
 }
 ```
+
+- `meta`: 선택 필드. 특정 에러 시 추가 정보 제공.
+  - **Cooldown** (`CHALLENGE_OTP_COOLDOWN_ACTIVE` 429): `{ "availableAt": "ISO-8601", "retryAfterSeconds": number }` — 이때 `Retry-After` HTTP 헤더도 설정됨.
 
 ### 인증 불필요 (Public) 경로
 
 - `/api/v1/auth/**`
-- `/api/v1/accounts/register`, `/api/v1/accounts/register/requests`, `/api/v1/accounts/register/confirmations`
+- `/api/v1/accounts/policies/password`, `/api/v1/accounts/register`, `/api/v1/accounts/register/requests`, `/api/v1/accounts/register/confirmations`
 - `/api/v1/mails/verify`
 
 나머지 `/api/v1/**` 는 JWT 인증 필요.
@@ -116,10 +120,27 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
+| GET | `/api/v1/accounts/policies/password` | Public | 비밀번호 정책 조회 |
 | POST | `/api/v1/accounts/register` | Public | 회원가입 (확인 토큰 필요) |
 | POST | `/api/v1/accounts/me/update/name` | JWT | 이름 변경 |
 | POST | `/api/v1/accounts/me/password` | JWT | 비밀번호 변경 |
 | POST | `/api/v1/accounts/me/withdraw` | JWT | 회원 탈퇴 |
+
+### GET /api/v1/accounts/policies/password
+
+- Request Body 없음.
+- 회원가입/비밀번호 변경 시 프론트엔드 검증용 정책 정보 반환.
+
+**Response (data)**
+
+```json
+{
+  "regex": "string (정규식)",
+  "message": "string (한글 안내 메시지)"
+}
+```
+
+- 예: `message` = "비밀번호는 12자 이상이며, 대문자·소문자·숫자·특수문자를 모두 포함해야 합니다."
 
 ### POST /api/v1/accounts/register
 
@@ -201,19 +222,19 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
 
 **Request Body**
 
-```json
-{
-  "email": "string (required, email 형식)"
-}
-```
+- `register/requests`: `{ "email": "string (required, email 형식)" }`
+- `me/withdraw/requests`, `me/password/requests`: Request Body 없음 (JWT로 이메일 식별)
 
 **Response (data)**
 
 ```json
 {
-  "challengeId": "UUID"
+  "challengeId": "UUID",
+  "expiresAt": "string (ISO-8601, OTP 만료 시각)"
 }
 ```
+
+- `CHALLENGE_OTP_COOLDOWN_ACTIVE` (429) 시: `meta` 필드에 `availableAt`, `retryAfterSeconds` 포함, `Retry-After` 헤더 설정.
 
 ### OTP 확인 (confirmations)
 
@@ -324,11 +345,11 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
 ```json
 [
   {
+    "membershipId": "string (UUID)",
     "accountId": "string (UUID)",
-    "email": "string",
     "name": "string",
     "role": "OWNER | CREW",
-    "joinedAt": "string (ISO 8601)"
+    "joinedAt": "string (ISO 8601) | null"
   }
 ]
 ```
