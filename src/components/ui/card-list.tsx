@@ -25,13 +25,11 @@ export function CardList<T>({
     );
   }
 
+  const gridColsClass =
+    columns === 2 ? 'lg:grid-cols-2' : columns === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2';
+
   return (
-    <div
-      className="grid gap-2.5 max-lg:grid-cols-1"
-      style={{
-        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-      }}
-    >
+    <div className={`grid gap-2.5 grid-cols-1 ${gridColsClass}`}>
       {items.map((item, idx) => (
         <div
           key={getItemId ? getItemId(item) : idx}
