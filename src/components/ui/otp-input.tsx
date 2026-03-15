@@ -95,7 +95,7 @@ export function OtpInput({
   };
 
   return (
-    <div className={`flex items-center justify-center gap-2 ${className}`}>
+    <div className={`flex items-center justify-start gap-2 ${className}`}>
       {Array.from({ length: LENGTH }).map((_, i) => (
         <span key={i} className="flex items-center gap-2">
           <input

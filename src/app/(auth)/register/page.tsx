@@ -156,8 +156,8 @@ export default function RegisterPage() {
 
   return (
     <AuthCard title="회원가입">
-      <nav className="mb-5" aria-label="회원가입 단계">
-        <div className="relative w-full" style={{ height: 42 }}>
+      <nav className="mb-5 overflow-hidden" aria-label="회원가입 단계">
+        <div className="relative w-full overflow-hidden" style={{ height: 42 }}>
           <svg
             className="absolute inset-0 w-full h-full"
             viewBox="0 0 276 42"
@@ -192,11 +192,11 @@ export default function RegisterPage() {
               }
             />
           </svg>
-          <div className="absolute inset-0 flex">
+          <div className="absolute inset-0 flex overflow-hidden">
             {steps.map((s) => (
               <span
                 key={s.num}
-                className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold min-w-0"
+                className="flex flex-1 items-center justify-center gap-1.5 text-sm font-semibold min-w-0 overflow-hidden px-1"
                 style={{
                   color:
                     step === s.num
@@ -211,9 +211,9 @@ export default function RegisterPage() {
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 ) : null}
-                <span className="flex items-center gap-1.5 min-w-0">
-                  {step > s.num ? null : <span className="shrink-0">STEP {s.num}</span>}
-                  <span className={`truncate ${step === s.num ? 'opacity-90' : 'opacity-80'}`}>
+                <span className="flex min-w-0 items-center justify-center gap-1.5 overflow-hidden">
+                  {step > s.num ? null : step === s.num ? null : <span className="shrink-0">STEP {s.num}</span>}
+                  <span className={`min-w-0 truncate ${step === s.num ? 'opacity-90' : 'opacity-80'}`}>
                     {s.label}
                   </span>
                 </span>

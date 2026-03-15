@@ -156,7 +156,7 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 py-1.5 bg-surface-2 border border-line rounded-[10px] shadow-lg z-50 min-w-[220px]">
+        <div className="absolute left-0 right-0 top-full mt-1 py-1.5 bg-surface-2 border border-line rounded-[10px] shadow-lg z-50 min-w-[220px] max-w-full overflow-hidden">
           <Link
             href="/workspaces"
             onClick={() => setOpen(false)}
@@ -189,14 +189,14 @@ export function WorkspaceSwitcher({ currentWorkspaceId, currentWorkspaceName }: 
                   key={ws.id}
                   href={`/workspaces/${ws.id}/board`}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 text-[13px] transition-colors ${
+                  className={`flex items-center gap-2.5 px-3 py-2.5 text-[13px] transition-colors min-w-0 ${
                     isActive ? 'bg-accent-dim text-accent-soft' : 'text-text-soft hover:bg-surface-3 hover:text-text'
                   }`}
                 >
                   <div className="size-6 shrink-0 rounded-md bg-gradient-to-br from-accent to-[#f06aaf] grid place-items-center text-[10px] font-bold">
                     {ws.name.slice(0, 2).toUpperCase()}
                   </div>
-                  <span className="truncate">{ws.name}</span>
+                  <span className="min-w-0 truncate">{ws.name}</span>
                 </Link>
               );
             })
