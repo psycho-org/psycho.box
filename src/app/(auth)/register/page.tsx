@@ -244,8 +244,8 @@ export default function RegisterPage() {
       )}
 
       {step === 2 && (
-        <form className="grid gap-3" onSubmit={handleOtpConfirm}>
-          <label className="grid gap-1.5 text-[13px] text-text-soft mb-4">
+        <form className="grid gap-3 place-items-center" onSubmit={handleOtpConfirm}>
+          <label className="grid gap-1.5 text-[13px] text-text-soft mb-4 w-full place-items-center">
             OTP 코드
             <OtpInput
               value={otpCode}
@@ -254,10 +254,10 @@ export default function RegisterPage() {
               className="mt-1"
             />
           </label>
-          <Button type="submit" loading={loading}>
+          <Button type="submit" loading={loading} className="w-full">
             확인
           </Button>
-          <div className="mt-2 space-y-1">
+          <div className="mt-2 space-y-1 w-full text-center">
             <p className="text-text-soft text-[13px]">
               {email}로 발송된 OTP 코드를 입력하세요.
             </p>
@@ -265,7 +265,7 @@ export default function RegisterPage() {
               인증 코드는 유효기간이 있습니다. 만료되면 이메일 변경 후 다시 요청해 주세요.
             </p>
           </div>
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 w-full">
             <button
               type="button"
               onClick={() => {
