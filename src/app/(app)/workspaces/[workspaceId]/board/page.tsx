@@ -144,14 +144,14 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <TaskStatusDot status={status} className="size-2.5" />
-                        <h4 className="m-0 text-[14px] font-semibold text-text truncate">
+                        <h4 className="m-0 text-[14px] font-semibold text-text truncate flex items-center gap-1.5">
                           {label}
+                          <span className="text-[12px] font-normal text-text-dim tabular-nums">
+                            {items.length}
+                          </span>
                         </h4>
                       </div>
                       <p className="m-0 text-[11px] text-text-dim">{description}</p>
-                      <p className="m-0 mt-1 text-[11px] text-text-soft font-medium">
-                        {items.length}개
-                      </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
@@ -175,24 +175,20 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                   <div className="flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px]">
                     {items.map((task) => {
                       const { tags, displayTitle } = parseTagsFromTitle(task.title);
-                      const shortId = task.id.slice(0, 8);
                       return (
                         <div
                           key={task.id}
                           className="group rounded-xl border border-line bg-surface p-3 hover:border-line-2 transition-colors cursor-pointer"
                         >
                           <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <TaskStatusDot status={task.status} className="size-2 shrink-0" />
-                              <span className="text-[11px] font-mono text-text-dim truncate">
-                                #{shortId}
-                              </span>
+                            <div className="flex items-start gap-2 min-w-0 flex-1">
+                              <TaskStatusDot status={task.status} className="size-2 shrink-0 mt-0.5" />
+                              <p className="m-0 text-[13px] font-medium text-text line-clamp-2 flex-1">
+                                {displayTitle}
+                              </p>
                             </div>
                             <AssigneeAvatar assignee={task.assignee} />
                           </div>
-                          <p className="m-0 text-[13px] font-medium text-text line-clamp-2 mb-2">
-                            {displayTitle}
-                          </p>
                           {tags.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {tags.map((t) => (
@@ -214,15 +210,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                       );
                     })}
                   </div>
-                  {/* 추가 버튼 */}
-                  <button
-                    type="button"
-                    onClick={() => openCreateModal(status)}
-                    className="m-3 py-2.5 rounded-xl border border-dashed border-line-2 bg-transparent flex items-center justify-center gap-2 text-text-dim hover:border-accent hover:text-accent-soft hover:bg-accent-dim/30 transition-colors text-[13px]"
-                  >
-                    <PlusIcon className="size-4" />
-                    태스크 추가
-                  </button>
                 </div>
               );
             })}
