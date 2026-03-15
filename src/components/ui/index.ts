@@ -1,6 +1,9 @@
 export { Button } from './button';
 export type { ButtonProps, ButtonVariant } from './button';
 
+export { CooldownCountdown } from './cooldown-countdown';
+export type { CooldownCountdownProps } from './cooldown-countdown';
+
 export { OtpInput } from './otp-input';
 export type { OtpInputProps } from './otp-input';
 

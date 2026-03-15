@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { AuthCard } from '@/components/auth-card';
-import { Button, OtpInput } from '@/components/ui';
+import { Button, CooldownCountdown, OtpInput } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [confirmationTokenId, setConfirmationTokenId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cooldownAvailableAt, setCooldownAvailableAt] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const [passwordPolicy, setPasswordPolicy] = useState<{ regex: string; message: string } | null>(null);
@@ -62,10 +63,14 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (!result.ok) {
+      if (result.code === 'CHALLENGE_OTP_COOLDOWN_ACTIVE' && result.meta?.availableAt) {
+        setCooldownAvailableAt(result.meta.availableAt);
+      }
       setError(getErrorMessage({ code: result.code, message: result.message, status: result.status }));
       return;
     }
 
+    setCooldownAvailableAt(null);
     setChallengeId(result.data?.challengeId ?? '');
     setStep(2);
   }
@@ -231,7 +236,7 @@ export default function RegisterPage() {
               required
             />
           </label>
-          <Button type="submit" loading={loading}>
+          <Button type="submit" loading={loading} disabled={!!cooldownAvailableAt}>
             OTP 요청
           </Button>
         </form>
@@ -381,7 +386,19 @@ export default function RegisterPage() {
         </form>
       )}
 
-      {error ? (
+      {cooldownAvailableAt ? (
+        <div className="mt-2 rounded-lg py-2.5 px-3 text-[13px] bg-red/[0.16] border border-red/35 text-[#ffc4cf]">
+          <CooldownCountdown
+            availableAt={cooldownAvailableAt}
+            onComplete={() => {
+              setCooldownAvailableAt(null);
+              setError('');
+            }}
+            message="{seconds}초 후 재요청 가능"
+            className="!text-[#ffc4cf] m-0"
+          />
+        </div>
+      ) : error ? (
         <p className="mt-2 rounded-lg py-2.5 px-3 text-[13px] bg-red/[0.16] border border-red/35 text-[#ffc4cf]">
           {error}
         </p>

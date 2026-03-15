@@ -57,7 +57,40 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
 ```
 
 - `meta`: 선택 필드. 특정 에러 시 추가 정보 제공.
-  - **Cooldown** (`CHALLENGE_OTP_COOLDOWN_ACTIVE` 429): `{ "availableAt": "ISO-8601", "retryAfterSeconds": number }` — 이때 `Retry-After` HTTP 헤더도 설정됨.
+
+#### Cooldown (`CHALLENGE_OTP_COOLDOWN_ACTIVE` 429)
+
+OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`):
+
+- **meta** 필드에 Cooldown 정보 포함
+- **Retry-After** HTTP 헤더 설정 (초 단위, 재요청 가능까지 남은 시간)
+
+**meta 구조**
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `availableAt` | string (ISO-8601) | 재요청 가능 시각 |
+| `retryAfterSeconds` | number | 재요청 가능까지 남은 초 |
+
+**에러 응답 예시**
+
+```json
+{
+  "timestamp": "2025-03-15T12:00:00.000Z",
+  "status": 429,
+  "message": "Please wait before requesting a new OTP",
+  "error": "Too Many Requests",
+  "code": "CHALLENGE_OTP_COOLDOWN_ACTIVE",
+  "path": "/api/v1/accounts/register/requests",
+  "details": null,
+  "meta": {
+    "availableAt": "2025-03-15T12:01:00.000Z",
+    "retryAfterSeconds": 60
+  }
+}
+```
+
+- 응답 헤더: `Retry-After: 60` (초 단위)
 
 ### 인증 불필요 (Public) 경로
 
