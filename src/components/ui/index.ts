@@ -20,6 +20,12 @@ export { CardList } from './card-list';
 export type { CardListProps } from './card-list';
 
 export { TaskStatusDot } from './task-status-dot';
+
+export { ViewModeToggle } from './view-mode-toggle';
+export type { ViewModeToggleProps, ViewDisplayMode } from './view-mode-toggle';
+
+export { CollapsibleTableList } from './collapsible-table-list';
+export type { CollapsibleTableListProps, CollapsibleTableGroup } from './collapsible-table-list';
 export type { TaskStatusDotProps } from './task-status-dot';
 
 export { DatePicker } from './date-picker';

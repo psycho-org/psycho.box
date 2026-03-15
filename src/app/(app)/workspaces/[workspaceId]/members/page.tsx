@@ -5,7 +5,7 @@ import { use } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AddMemberModal } from '@/components/add-member-modal';
 import { Snackbar } from '@/components/ui/snackbar';
-import { CardList } from '@/components/ui';
+import { CardList, ViewModeToggle, CollapsibleTableList } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
@@ -24,25 +24,6 @@ function PlusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-
-function ListIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-    </svg>
-  );
-}
-
-function GridIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   );
 }
@@ -105,44 +86,36 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
     loadMembers();
   }, [loadMembers]);
 
+  const memberGroups = [
+    {
+      key: 'OWNER',
+      label: '오너',
+      count: members.filter((m) => m.role === 'OWNER').length,
+      items: members.filter((m) => m.role === 'OWNER'),
+    },
+    {
+      key: 'CREW',
+      label: '멤버',
+      count: members.filter((m) => m.role === 'CREW').length,
+      items: members.filter((m) => m.role === 'CREW'),
+    },
+  ].filter((g) => g.count > 0);
+
   return (
     <AppShell
       workspaceId={workspaceId}
       workspaceName="워크스페이스"
       title="멤버 관리"
     >
-      <section className="bg-surface border border-line rounded-xl p-3.5 min-w-0 overflow-hidden">
+      <section className="bg-surface/95 border border-line/60 rounded-2xl p-5 min-w-0 overflow-hidden shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-2.5">
           <h3 className="m-0 text-base shrink-0">멤버 목록</h3>
           <div className="flex items-center gap-1">
-            <div
-              className="flex rounded-lg border border-line overflow-hidden"
-              role="group"
-              aria-label="보기 방식 선택"
-            >
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className={`size-8 flex items-center justify-center transition-colors ${
-                  viewMode === 'list' ? 'bg-surface-3 text-text' : 'bg-surface-2 text-text-soft hover:bg-surface-3 hover:text-text'
-                }`}
-                title="리스트 보기"
-                aria-pressed={viewMode === 'list'}
-              >
-                <ListIcon className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('card')}
-                className={`size-8 flex items-center justify-center border-l border-line transition-colors ${
-                  viewMode === 'card' ? 'bg-surface-3 text-text' : 'bg-surface-2 text-text-soft hover:bg-surface-3 hover:text-text'
-                }`}
-                title="카드 보기"
-                aria-pressed={viewMode === 'card'}
-              >
-                <GridIcon className="size-4" />
-              </button>
-            </div>
+            <ViewModeToggle
+              value={viewMode === 'list' ? 'list' : 'kanban'}
+              onChange={(v) => setViewMode(v === 'list' ? 'list' : 'card')}
+              kanbanLabel="카드"
+            />
             <button
               type="button"
               onClick={() => setAddModalOpen(true)}
@@ -161,32 +134,21 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
         ) : members.length === 0 ? (
           <p className="text-text-soft text-[13px] mb-3">멤버가 없습니다.</p>
         ) : viewMode === 'list' ? (
-          <div className="overflow-x-auto -mx-3.5 px-3.5">
-          <table className="w-full min-w-[280px] table-fixed border-collapse">
-            <thead>
-              <tr>
-                <th className="w-1/3 border-b border-line text-left text-[13px] py-2.5 px-2">이름</th>
-                <th className="w-1/3 border-b border-line text-right text-[13px] py-2.5 px-2">역할</th>
-                <th className="w-1/3 border-b border-line text-left text-[13px] py-2.5 px-2">가입일</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...members].sort((a, b) => (a.role === 'OWNER' && b.role !== 'OWNER' ? -1 : a.role !== 'OWNER' && b.role === 'OWNER' ? 1 : 0)).map((member) => (
-                <tr key={member.membershipId} className="hover:bg-surface-2">
-                  <td className="border-b border-line text-left text-[13px] py-2.5 px-2">
-                    {member.name || '-'}
-                  </td>
-                  <td className="border-b border-line text-right text-[13px] py-2.5 px-2">
-                    <RoleBadge role={member.role} />
-                  </td>
-                  <td className="border-b border-line text-left text-[13px] py-2.5 px-2">
-                    {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString('ko-KR') : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+          <CollapsibleTableList<Member>
+            groups={memberGroups}
+            getItemId={(m) => m.membershipId}
+            emptyMessage="멤버가 없습니다."
+            defaultExpanded={true}
+            columns={[
+              { key: 'name', label: '이름', render: (m) => m.name || '-' },
+              { key: 'role', label: '역할', render: (m) => <RoleBadge role={m.role} /> },
+              {
+                key: 'joinedAt',
+                label: '가입일',
+                render: (m) => (m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('ko-KR') : '-'),
+              },
+            ]}
+          />
         ) : (
           <div className="w-full min-w-0">
             <CardList

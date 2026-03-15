@@ -1,13 +1,15 @@
 'use client';
 
 import { use, useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
-import { TaskStatusDot } from '@/components/ui';
+import { TaskStatusDot, ViewModeToggle, CollapsibleTableList } from '@/components/ui';
 import { TaskCreateModal } from '@/components/task-create-modal';
 import { TaskRoadmap } from '@/components/task-roadmap';
 import { apiRequest } from '@/lib/client';
 import { USER_ID_COOKIE } from '@/lib/constants';
 import type { TaskStatus } from '@/lib/task-status';
+import { TASK_STATUS_COLORS } from '@/lib/task-status';
 
 type BoardView = 'sprint' | 'assignee' | 'my' | 'roadmap';
 
@@ -121,7 +123,14 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const [error, setError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalStatus, setCreateModalStatus] = useState<TaskStatus>('TODO');
-  const [view, setView] = useState<BoardView>('sprint');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get('view') as BoardView | null;
+  const view: BoardView = viewParam && ['sprint', 'assignee', 'my', 'roadmap'].includes(viewParam)
+    ? viewParam
+    : 'sprint';
+  const displayParam = searchParams.get('display');
+  const display = displayParam === 'list' ? 'list' : 'kanban';
   const [assigneesExpanded, setAssigneesExpanded] = useState(true);
   const [selectedAssignee, setSelectedAssignee] = useState<AssigneeFilterKey | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -206,64 +215,209 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     return source;
   }, [view, tasks, myTasks, filteredTasks]);
 
+  const viewTitles: Record<BoardView, string> = {
+    sprint: '스프린트',
+    assignee: '담당자',
+    my: '나의 테스크',
+    roadmap: '로드맵',
+  };
+
+  /** 리스트 뷰용 그룹 데이터 (대분류별 접기) */
+  const listGroups = useMemo(() => {
+    const source = view === 'my' ? myTasks : view === 'assignee' ? filteredTasks : tasks;
+
+    if (view === 'assignee' && selectedAssignee) {
+      // 담당자 선택 시: 상태별 그룹
+      return COLUMNS.map(({ label, status }) => ({
+        key: status,
+        label,
+        count: source.filter((t) => t.status === status).length,
+        items: source.filter((t) => t.status === status).sort((a, b) => {
+          const aDate = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+          const bDate = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+          return aDate - bDate;
+        }),
+        accentColor: TASK_STATUS_COLORS[status],
+      }));
+    }
+
+    if (view === 'assignee' && !selectedAssignee) {
+      // 담당자 미선택: 담당자별 그룹
+      const groups: { key: string; label: string; count: number; items: Task[] }[] = [];
+      for (const a of assigneeList.list) {
+        const items = source.filter((t) => t.assignee?.id === a.id);
+        groups.push({ key: a.id, label: a.name, count: items.length, items });
+      }
+      if (assigneeList.noAssigneeCount > 0) {
+        const items = source.filter((t) => !t.assignee);
+        groups.push({ key: 'none', label: '담당자 없음', count: items.length, items });
+      }
+      return groups;
+    }
+
+    if (view === 'roadmap') {
+      // 로드맵: 마감일 월별 그룹
+      const byMonth = new Map<string, Task[]>();
+      for (const t of source) {
+        const month = t.dueDate
+          ? `${new Date(t.dueDate).getFullYear()}-${String(new Date(t.dueDate).getMonth() + 1).padStart(2, '0')}`
+          : 'no-date';
+        const list = byMonth.get(month) ?? [];
+        list.push(t);
+        byMonth.set(month, list);
+      }
+      const months = Array.from(byMonth.keys()).sort((a, b) => {
+        if (a === 'no-date') return 1;
+        if (b === 'no-date') return -1;
+        return a.localeCompare(b);
+      });
+      return months.map((month) => {
+        const items = (byMonth.get(month) ?? []).sort((a, b) => {
+          const aDate = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+          const bDate = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+          return aDate - bDate;
+        });
+        const label = month === 'no-date' ? '마감일 없음' : `${month.slice(0, 4)}년 ${parseInt(month.slice(5), 10)}월`;
+        return { key: month, label, count: items.length, items };
+      });
+    }
+
+    // 스프린트, 나의 테스크: 상태별 그룹
+    return COLUMNS.map(({ label, status }) => ({
+      key: status,
+      label,
+      count: source.filter((t) => t.status === status).length,
+      items: source.filter((t) => t.status === status).sort((a, b) => {
+        const aDate = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+        const bDate = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+        return aDate - bDate;
+      }),
+      accentColor: TASK_STATUS_COLORS[status],
+    }));
+  }, [view, tasks, myTasks, filteredTasks, selectedAssignee, assigneeList]);
+
+  function setDisplay(mode: 'list' | 'kanban') {
+    const params = new URLSearchParams(searchParams.toString());
+    if (mode === 'kanban') params.delete('display');
+    else params.set('display', 'list');
+    router.push(`/workspaces/${workspaceId}/board?${params.toString()}`);
+  }
+
   return (
     <AppShell
       workspaceId={workspaceId}
       workspaceName="워크스페이스"
-      title="스프린트 보드"
+      title={viewTitles[view]}
     >
-      <section className="bg-surface border border-line rounded-2xl p-4">
-        {/* 보드 뷰 전환 탭 */}
-        <nav className="flex items-center gap-1 mb-4" aria-label="보드 뷰 전환">
-          <button
-            type="button"
-            onClick={() => setView('sprint')}
-            className={`px-2.5 py-1 rounded-lg text-[13px] font-medium transition-colors ${
-              view === 'sprint'
-                ? 'bg-accent-dim text-accent-soft underline underline-offset-2'
-                : 'text-text-soft hover:text-text hover:bg-surface-2'
-            }`}
-          >
-            Task
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('assignee')}
-            className={`px-2.5 py-1 rounded-lg text-[13px] font-medium transition-colors ${
-              view === 'assignee'
-                ? 'bg-accent-dim text-accent-soft underline underline-offset-2'
-                : 'text-text-soft hover:text-text hover:bg-surface-2'
-            }`}
-          >
-            Assignee
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('my')}
-            className={`px-2.5 py-1 rounded-lg text-[13px] font-medium transition-colors ${
-              view === 'my'
-                ? 'bg-accent-dim text-accent-soft underline underline-offset-2'
-                : 'text-text-soft hover:text-text hover:bg-surface-2'
-            }`}
-          >
-            My items
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('roadmap')}
-            className={`px-2.5 py-1 rounded-lg text-[13px] font-medium transition-colors ${
-              view === 'roadmap'
-                ? 'bg-accent-dim text-accent-soft underline underline-offset-2'
-                : 'text-text-soft hover:text-text hover:bg-surface-2'
-            }`}
-          >
-            Roadmap
-          </button>
-        </nav>
+      <section className="bg-surface/95 border border-line/60 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center justify-end mb-5">
+          <ViewModeToggle value={display} onChange={setDisplay} />
+        </div>
         {loading ? (
           <p className="text-text-soft text-[13px]">태스크 로딩 중...</p>
         ) : error ? (
           <p className="text-red text-[13px]">{error}</p>
+        ) : display === 'list' ? (
+          <div className={view === 'assignee' ? 'flex gap-4' : ''}>
+            {view === 'assignee' && (
+              <aside className="w-52 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setAssigneesExpanded((e) => !e)}
+                  className="w-full flex items-center gap-2 py-2 text-left text-[14px] font-semibold text-text"
+                >
+                  <ChevronIcon className="size-4 text-text-dim" expanded={assigneesExpanded} />
+                  담당자
+                </button>
+                {assigneesExpanded && (
+                  <div className="mt-1 space-y-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAssignee(null)}
+                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
+                        selectedAssignee === null ? 'bg-accent-dim text-accent-soft' : 'hover:bg-surface-2 text-text'
+                      }`}
+                    >
+                      <span className="text-text-dim tabular-nums shrink-0">전체</span>
+                      <span className="tabular-nums text-text-dim">({tasks.length})</span>
+                    </button>
+                    {assigneeList.list.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => setSelectedAssignee(a.id)}
+                        className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
+                          selectedAssignee === a.id ? 'bg-accent-dim text-accent-soft' : 'hover:bg-surface-2 text-text'
+                        }`}
+                      >
+                        <AssigneeAvatar assignee={{ id: a.id, name: a.name }} className="size-6" />
+                        <span className="min-w-0 truncate flex-1">{a.name}</span>
+                        <span className="tabular-nums text-text-dim shrink-0">{a.count}</span>
+                      </button>
+                    ))}
+                    {assigneeList.noAssigneeCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAssignee('none')}
+                        className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
+                          selectedAssignee === 'none' ? 'bg-accent-dim text-accent-soft' : 'hover:bg-surface-2 text-text'
+                        }`}
+                      >
+                        <AssigneeAvatar assignee={null} className="size-6" />
+                        <span className="min-w-0 truncate flex-1">담당자 없음</span>
+                        <span className="tabular-nums text-text-dim shrink-0">{assigneeList.noAssigneeCount}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </aside>
+            )}
+            <div className="flex-1 min-w-0">
+              <CollapsibleTableList<Task>
+                groups={listGroups}
+                getItemId={(t) => t.id}
+                emptyMessage="태스크가 없습니다."
+                defaultExpanded={true}
+                columns={[
+                  {
+                    key: 'title',
+                    label: '제목',
+                    render: (task) => {
+                      const { displayTitle } = parseTagsFromTitle(task.title);
+                      return <span className="truncate block">{displayTitle}</span>;
+                    },
+                  },
+                  {
+                    key: 'status',
+                    label: '상태',
+                    render: (task) => (
+                      <span className="inline-flex items-center gap-1.5">
+                        <TaskStatusDot status={task.status} className="size-2.5" />
+                        {COLUMNS.find((c) => c.status === task.status)?.label ?? task.status}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'assignee',
+                    label: '담당자',
+                    render: (task) => {
+                      const name = task.assignee?.name ?? task.assignee?.email ?? '-';
+                      return <span className="truncate block">{name}</span>;
+                    },
+                  },
+                  {
+                    key: 'dueDate',
+                    label: '마감일',
+                    render: (task) => (
+                      <span className="text-text-dim">
+                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ko-KR') : '-'}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          </div>
         ) : view === 'roadmap' ? (
           <TaskRoadmap tasks={roadmapTasks} monthCount={2} />
         ) : view === 'assignee' ? (
@@ -339,7 +493,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                   return (
                     <div
                       key={status}
-                      className="flex flex-col min-w-0 rounded-xl bg-surface-2 border border-line overflow-hidden"
+                      className="flex flex-col min-w-0 rounded-xl bg-surface-2/80 border border-line/60 overflow-hidden"
                     >
                       <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
                         <div className="min-w-0 flex-1">
@@ -369,7 +523,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                           return (
                             <div
                               key={task.id}
-                              className="group rounded-xl border border-line bg-surface p-3 hover:border-line-2 transition-colors cursor-pointer"
+                              className="group rounded-xl border border-line/60 bg-surface/95 p-3 hover:border-line-2/80 hover:bg-surface/100 transition-all duration-200 cursor-pointer"
                             >
                               <div className="flex items-start justify-between gap-2 mb-2">
                                 <div className="flex items-start gap-2 min-w-0 flex-1">
@@ -414,7 +568,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
               return (
                 <div
                   key={status}
-                  className="flex flex-col min-w-0 rounded-xl bg-surface-2 border border-line overflow-hidden"
+                  className="flex flex-col min-w-0 rounded-xl bg-surface-2/80 border border-line/60 overflow-hidden"
                 >
                   {/* 컬럼 헤더 */}
                   <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
@@ -455,7 +609,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                       return (
                         <div
                           key={task.id}
-                          className="group rounded-xl border border-line bg-surface p-3 hover:border-line-2 transition-colors cursor-pointer"
+                          className="group rounded-xl border border-line/60 bg-surface/95 p-3 hover:border-line-2/80 hover:bg-surface/100 transition-all duration-200 cursor-pointer"
                         >
                           <div className="flex items-start justify-between gap-2 mb-2">
                             <div className="flex items-start gap-2 min-w-0 flex-1">

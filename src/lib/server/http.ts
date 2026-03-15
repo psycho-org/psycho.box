@@ -43,7 +43,7 @@ async function relayWithPayload(
   };
 }
 
-function parseAuthData(payload: JsonLike): { accessToken?: string; userId?: string } {
+function parseAuthData(payload: JsonLike): { accessToken?: string; userId?: string; user?: Record<string, unknown> } {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return {};
 
   const wrapped = payload as Record<string, unknown>;
@@ -60,7 +60,7 @@ function parseAuthData(payload: JsonLike): { accessToken?: string; userId?: stri
     userId = typeof userRecord.id === 'string' ? userRecord.id : undefined;
   }
 
-  return { accessToken, userId };
+  return { accessToken, userId, user: user && typeof user === 'object' && !Array.isArray(user) ? (user as Record<string, unknown>) : undefined };
 }
 
 export async function handleLogin(request: NextRequest): Promise<NextResponse> {
@@ -90,6 +90,110 @@ export async function handleLogin(request: NextRequest): Promise<NextResponse> {
 
   if (refreshToken) {
     response.cookies.set(REFRESH_TOKEN_COOKIE, refreshToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isSecureCookie,
+      path: '/',
+    });
+  }
+
+  if (userId) {
+    response.cookies.set(USER_ID_COOKIE, userId, {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: isSecureCookie,
+      path: '/',
+    });
+  }
+
+  return response;
+}
+
+export async function handleRefresh(): Promise<NextResponse> {
+  const refreshToken = (await cookies()).get(REFRESH_TOKEN_COOKIE)?.value;
+
+  const backendResponse = await fetch(`${BACKEND_API_URL}/api/v1/auth/refresh`, {
+    method: 'POST',
+    headers: refreshToken
+      ? { Cookie: `${BACKEND_REFRESH_COOKIE_NAME}=${refreshToken}` }
+      : undefined,
+    cache: 'no-store',
+  });
+
+  const { response, payload } = await relayWithPayload(backendResponse);
+  if (!backendResponse.ok) return response;
+
+  const { accessToken, userId } = parseAuthData(payload);
+  const refreshTokenNew = extractRefreshToken(backendResponse.headers.get('set-cookie'));
+
+  if (accessToken) {
+    response.cookies.set(ACCESS_TOKEN_COOKIE, accessToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isSecureCookie,
+      path: '/',
+    });
+  }
+
+  if (refreshTokenNew) {
+    response.cookies.set(REFRESH_TOKEN_COOKIE, refreshTokenNew, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isSecureCookie,
+      path: '/',
+    });
+  }
+
+  if (userId) {
+    response.cookies.set(USER_ID_COOKIE, userId, {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: isSecureCookie,
+      path: '/',
+    });
+  }
+
+  return response;
+}
+
+export async function handleGetMe(): Promise<NextResponse> {
+  const refreshToken = (await cookies()).get(REFRESH_TOKEN_COOKIE)?.value;
+
+  const backendResponse = await fetch(`${BACKEND_API_URL}/api/v1/auth/refresh`, {
+    method: 'POST',
+    headers: refreshToken
+      ? { Cookie: `${BACKEND_REFRESH_COOKIE_NAME}=${refreshToken}` }
+      : undefined,
+    cache: 'no-store',
+  });
+
+  const raw = await backendResponse.text();
+  const payload = readJsonSafely(raw);
+
+  if (!backendResponse.ok) {
+    return NextResponse.json(payload, { status: backendResponse.status });
+  }
+
+  const { accessToken, userId, user } = parseAuthData(payload);
+  const refreshTokenNew = extractRefreshToken(backendResponse.headers.get('set-cookie'));
+
+  if (!user) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  const response = NextResponse.json({ data: { user } }, { status: 200 });
+
+  if (accessToken) {
+    response.cookies.set(ACCESS_TOKEN_COOKIE, accessToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isSecureCookie,
+      path: '/',
+    });
+  }
+
+  if (refreshTokenNew) {
+    response.cookies.set(REFRESH_TOKEN_COOKIE, refreshTokenNew, {
       httpOnly: true,
       sameSite: 'lax',
       secure: isSecureCookie,
