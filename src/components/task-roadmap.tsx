@@ -77,6 +77,8 @@ export interface TaskRoadmapProps {
   sprintEndDate?: string | null;
   /** 로드맵에서 날짜 이동 시 호출 (YYYY-MM-DD) */
   onTaskDueDateChange?: (taskId: string, dueDate: string) => Promise<void> | void;
+  /** 태스크 클릭 시 호출 */
+  onTaskClick?: (task: Task) => void;
 }
 
 const EDGE_THRESHOLD = 24;
@@ -107,6 +109,7 @@ export function TaskRoadmap({
   monthCount: initialMonthCount = 2,
   sprintEndDate,
   onTaskDueDateChange,
+  onTaskClick,
 }: TaskRoadmapProps) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [monthCount, setMonthCount] = useState(initialMonthCount);
@@ -485,7 +488,16 @@ export function TaskRoadmap({
               return (
                 <div
                   key={task.id}
-                  className={`flex h-[56px] items-start gap-2 overflow-hidden px-3 py-2.5 ${alertType ? ALERT_BG[alertType] : ''}`}
+                  className={`flex h-[56px] items-start gap-2 overflow-hidden px-3 py-2.5 ${alertType ? ALERT_BG[alertType] : ''} ${onTaskClick ? 'cursor-pointer hover:bg-blue/5' : ''}`}
+                  onClick={() => onTaskClick?.(task)}
+                  role={onTaskClick ? 'button' : undefined}
+                  tabIndex={onTaskClick ? 0 : undefined}
+                  onKeyDown={(e) => {
+                    if (onTaskClick && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      onTaskClick(task);
+                    }
+                  }}
                 >
                   <span className="text-[11px] text-text-dim tabular-nums shrink-0 w-5">
                     {idx + 1}
@@ -517,7 +529,16 @@ export function TaskRoadmap({
                   return (
                     <div
                       key={task.id}
-                      className={`flex h-[56px] items-start gap-2 overflow-hidden px-3 py-2.5 bg-surface ${alertType ? ALERT_BG[alertType] : ''}`}
+                      className={`flex h-[56px] items-start gap-2 overflow-hidden px-3 py-2.5 bg-surface ${alertType ? ALERT_BG[alertType] : ''} ${onTaskClick ? 'cursor-pointer hover:bg-blue/5' : ''}`}
+                      onClick={() => onTaskClick?.(task)}
+                      role={onTaskClick ? 'button' : undefined}
+                      tabIndex={onTaskClick ? 0 : undefined}
+                      onKeyDown={(e) => {
+                        if (onTaskClick && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          onTaskClick(task);
+                        }
+                      }}
                     >
                       <span className="text-[11px] text-text-dim tabular-nums shrink-0 w-5">
                         {scheduledTasks.length + idx + 1}

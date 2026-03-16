@@ -7,6 +7,7 @@ import { TaskStatusDot, CollapsibleTableList } from '@/components/ui';
 import { TodoCard } from '@/components/todo-card';
 import { TodoCardList } from '@/components/todo-card-list';
 import { TaskCreateModal } from '@/components/task-create-modal';
+import { TaskDetailModal, type TaskDetailModalTask } from '@/components/task-detail-modal';
 import { TaskRoadmap } from '@/components/task-roadmap';
 import { apiRequest } from '@/lib/client';
 import { USER_ID_COOKIE } from '@/lib/constants';
@@ -163,6 +164,8 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const [error, setError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalStatus, setCreateModalStatus] = useState<TaskStatus>('TODO');
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TaskDetailModalTask | null>(null);
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view') as BoardView | null;
   const view: BoardView = viewParam && ['sprint', 'assignee', 'my', 'roadmap'].includes(viewParam)
@@ -245,6 +248,11 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   function openCreateModal(status: TaskStatus) {
     setCreateModalStatus(status);
     setCreateModalOpen(true);
+  }
+
+  function openDetailModal(task: TaskDetailModalTask) {
+    setSelectedTask(task);
+    setDetailModalOpen(true);
   }
 
   function toTodoCardTask(task: Task) {
@@ -497,11 +505,13 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
             sprintEndDate={sprintEndDate}
             columns={3}
             emptyMessage="태스크가 없습니다."
+            onCardClick={(task) => openDetailModal(task as TaskDetailModalTask)}
           />
         ) : display === 'list' ? (
           <CollapsibleTableList<Task>
             groups={listGroups}
             getItemId={(t) => t.id}
+            onRowClick={(task) => openDetailModal(toTodoCardTask(task))}
             getItemRowClassName={(task) => {
               const alertType = getTaskAlertType(task, sprintEndDate);
               return alertType ? ALERT_BG[alertType] : '';
@@ -560,6 +570,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
               monthCount={2}
               sprintEndDate={sprintEndDate}
               onTaskDueDateChange={moveTaskDueDate}
+              onTaskClick={(task) => openDetailModal(toTodoCardTask(task as Task))}
             />
           </div>
         ) : view === 'assignee' ? (
@@ -677,7 +688,20 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                               draggingTaskId === task.id ? 'opacity-60' : ''
                             }`}
                           >
-                            <TodoCard task={toTodoCardTask(task)} sprintEndDate={sprintEndDate} />
+                            <div 
+                              role="button" 
+                              tabIndex={0} 
+                              className="cursor-pointer rounded-xl transition-all duration-200 hover:bg-surface-2/60 hover:scale-[1.01] hover:shadow-sm"
+                              onClick={() => openDetailModal(toTodoCardTask(task))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  openDetailModal(toTodoCardTask(task));
+                                }
+                              }}
+                            >
+                              <TodoCard task={toTodoCardTask(task)} sprintEndDate={sprintEndDate} />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -747,7 +771,20 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                           draggingTaskId === task.id ? 'opacity-60' : ''
                         }`}
                       >
-                        <TodoCard task={toTodoCardTask(task)} sprintEndDate={sprintEndDate} />
+                            <div 
+                              role="button" 
+                              tabIndex={0} 
+                              className="cursor-pointer rounded-xl transition-all duration-200 hover:bg-surface-2/60 hover:scale-[1.01] hover:shadow-sm"
+                              onClick={() => openDetailModal(toTodoCardTask(task))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  openDetailModal(toTodoCardTask(task));
+                                }
+                              }}
+                            >
+                              <TodoCard task={toTodoCardTask(task)} sprintEndDate={sprintEndDate} />
+                            </div>
                       </div>
                     ))}
                   </div>
@@ -763,6 +800,11 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
         workspaceId={workspaceId}
         defaultStatus={createModalStatus}
         onSuccess={loadTasks}
+      />
+      <TaskDetailModal
+        open={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        task={selectedTask}
       />
     </>
   );

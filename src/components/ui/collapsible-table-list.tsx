@@ -19,6 +19,8 @@ export interface CollapsibleTableListProps<T> {
   defaultExpanded?: boolean;
   /** 행별 추가 className (예: 경고 테두리) */
   getItemRowClassName?: (item: T) => string;
+  /** 행 클릭 이벤트 */
+  onRowClick?: (item: T) => void;
 }
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
@@ -46,6 +48,7 @@ export function CollapsibleTableList<T>({
   emptyMessage = '항목이 없습니다.',
   defaultExpanded = true,
   getItemRowClassName,
+  onRowClick,
 }: CollapsibleTableListProps<T>) {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
     new Set(defaultExpanded ? groups.map((g) => g.key) : []),
@@ -132,7 +135,16 @@ export function CollapsibleTableList<T>({
                       group.items.map((item) => (
                         <tr
                           key={getItemId(item)}
-                          className={`border-b border-line/60 last:border-b-0 hover:bg-surface-2/30 ${getItemRowClassName?.(item) ?? ''}`}
+                          className={`border-b border-line/60 last:border-b-0 hover:bg-surface-2/30 transition-colors ${getItemRowClassName?.(item) ?? ''} ${onRowClick ? 'cursor-pointer hover:bg-blue/5 focus:outline-none focus:bg-blue/10' : ''}`}
+                          onClick={() => onRowClick?.(item)}
+                          role={onRowClick ? "button" : undefined}
+                          tabIndex={onRowClick ? 0 : undefined}
+                          onKeyDown={(e) => {
+                            if (onRowClick && (e.key === 'Enter' || e.key === ' ')) {
+                              e.preventDefault();
+                              onRowClick(item);
+                            }
+                          }}
                         >
                           {columns.map((col) => (
                             <td key={col.key} className="py-2 px-3 text-[13px] align-top overflow-hidden">

@@ -42,8 +42,8 @@ export function CardList<T>({
               onCardClick(item, idx);
             }
           }}
-          className={`border border-line rounded-lg bg-surface p-2.5 grid gap-1.5 ${
-            onCardClick ? 'cursor-pointer hover:border-line-2 focus:outline-2 focus:outline-accent focus:outline-offset-1' : ''
+          className={`border border-line rounded-lg bg-surface p-2.5 grid gap-1.5 transition-all duration-200 ${
+            onCardClick ? 'cursor-pointer hover:bg-surface-2/60 hover:scale-[1.01] hover:shadow-sm' : ''
           }`}
         >
           {renderCard(item, idx)}
