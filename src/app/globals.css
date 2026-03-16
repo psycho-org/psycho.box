@@ -30,6 +30,33 @@
   --breakpoint-lg: 960px;
 }
 
+/* 밝은 테마 (data-theme="light"일 때) */
+html[data-theme="light"] {
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f1f4;
+  --color-surface-3: #e4e6eb;
+  --color-line: #d1d5db;
+  --color-line-2: #9ca3af;
+  --color-text: #1f2937;
+  --color-text-soft: #4b5563;
+  --color-text-dim: #6b7280;
+  --color-accent: #6d66d4;
+  --color-accent-soft: #5b54c8;
+  --color-accent-dim: rgba(109, 102, 212, 0.12);
+  --color-green: #22c55e;
+  --color-orange: #f97316;
+  --color-red: #ef4444;
+  --color-blue: #3b82f6;
+  --color-yellow: #eab308;
+  --color-purple: #8b5cf6;
+  --color-task-todo: #eab308;
+  --color-task-inprogress: #22c55e;
+  --color-task-done: #8b5cf6;
+  --color-task-cancelled: #6b7280;
+  --color-task-backlog: #9ca3af;
+}
+
 @layer base {
   body {
     @apply bg-bg text-text;

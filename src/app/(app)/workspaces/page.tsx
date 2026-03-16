@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
+import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { CreateWorkspaceModal } from '@/components/create-workspace-modal';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
@@ -173,6 +174,11 @@ export default function WorkspacesPage() {
         onClose={() => setCreateModalOpen(false)}
         onSuccess={loadWorkspaces}
       />
+
+      {/* 좌측 하단 테마 전환 */}
+      <div className="fixed bottom-4 left-4 z-[60]">
+        <ThemeToggleFloating />
+      </div>
     </div>
   );
 }

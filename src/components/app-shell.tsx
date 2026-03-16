@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
 import { UserMenu } from '@/components/user-menu';
-import { ViewToggleFloating } from '@/components/ui';
+import { ViewModeToggle } from '@/components/ui';
+import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { VIEW_TOGGLE_PAGES } from '@/lib/view-toggle-config';
 
 function MenuIcon({ className }: { className?: string }) {
@@ -264,14 +265,19 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
         </nav>
       </aside>
 
-      {/* 리스트/칸반 전환 토글 - config 기반, 어떤 페이지든 등록 가능 */}
-      {viewToggleConfig && (
-        <ViewToggleFloating
-          value={viewToggleConfig.getValue(searchParams.get('display'))}
-          onChange={setViewDisplay}
-          kanbanLabel={viewToggleConfig.kanbanLabel}
-        />
-      )}
+      {/* 좌측 하단 플로팅: 리스트/칸반 전환 + 테마 전환 */}
+      <div className="fixed bottom-4 left-4 z-[60] flex flex-col gap-2">
+        {viewToggleConfig && (
+          <div className="shadow-lg rounded-full">
+            <ViewModeToggle
+              value={viewToggleConfig.getValue(searchParams.get('display'))}
+              onChange={setViewDisplay}
+              kanbanLabel={viewToggleConfig.kanbanLabel}
+            />
+          </div>
+        )}
+        <ThemeToggleFloating />
+      </div>
 
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="shrink-0 h-14 border-b border-line/80 bg-surface px-4 lg:px-6 flex items-center justify-between gap-2 min-w-0">

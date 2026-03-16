@@ -193,18 +193,19 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       .catch(() => setSprintEndDate(null));
   }, [workspaceId]);
 
-  /** 담당자별 목록 (id, name, count) + 담당자 없음 */
+  /** 담당자별 목록 (id, name, count) + 담당자 없음. id별로 다른 색을 위해 유효한 id가 있으면 그대로, 없으면 taskId 기반 고유 키 사용 */
   const assigneeList = useMemo(() => {
     const map = new Map<string, { id: string; name: string; count: number }>();
     let noAssigneeCount = 0;
     for (const t of tasks) {
       if (t.assignee) {
-        const cur = map.get(t.assignee.id);
+        const effectiveId = t.assignee.id?.trim() || `task-${t.id}`;
+        const cur = map.get(effectiveId);
         if (cur) {
           cur.count += 1;
         } else {
-          map.set(t.assignee.id, {
-            id: t.assignee.id,
+          map.set(effectiveId, {
+            id: effectiveId,
             name: t.assignee.name || t.assignee.email || '알 수 없음',
             count: 1,
           });
@@ -223,7 +224,11 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     if (selectedAssignee === 'none') {
       return tasks.filter((t) => !t.assignee);
     }
-    return tasks.filter((t) => t.assignee?.id === selectedAssignee);
+    return tasks.filter((t) => {
+      if (!t.assignee) return false;
+      const effectiveId = t.assignee.id?.trim() || `task-${t.id}`;
+      return effectiveId === selectedAssignee;
+    });
   }, [tasks, selectedAssignee]);
 
   /** 내 태스크 (assignee가 현재 사용자인 것) */
@@ -284,7 +289,11 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       // 담당자별 그룹 (접기 헤더로 담당자 목록 표시, ID 기반 색상으로 구분)
       const groups: { key: string; label: string; count: number; items: Task[]; accentColor?: string }[] = [];
       for (const a of assigneeList.list) {
-        const items = source.filter((t) => t.assignee?.id === a.id);
+        const items = source.filter((t) => {
+          if (!t.assignee) return false;
+          const effectiveId = t.assignee.id?.trim() || `task-${t.id}`;
+          return effectiveId === a.id;
+        });
         groups.push({
           key: a.id,
           label: a.name,
