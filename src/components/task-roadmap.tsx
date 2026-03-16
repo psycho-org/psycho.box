@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { TaskStatusDot } from '@/components/ui';
 import type { TaskStatus } from '@/lib/task-status';
 
@@ -74,8 +74,19 @@ export interface TaskRoadmapProps {
   sprintEndDate?: string | null;
 }
 
-export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadmapProps) {
+const EDGE_THRESHOLD = 24;
+const EDGE_DWELL_MS = 450;
+const MAX_MONTH_COUNT = 12;
+
+export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEndDate }: TaskRoadmapProps) {
   const [monthOffset, setMonthOffset] = useState(0);
+  const [monthCount, setMonthCount] = useState(initialMonthCount);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pendingPrependWidthRef = useRef<number>(0);
+  const pendingScrollToEndRef = useRef(false);
+  const isRestoringScrollRef = useRef(false);
+  const edgeDwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const edgeDirectionRef = useRef<'left' | 'right' | null>(null);
 
   const { scheduledTasks, unscheduledTasks } = useMemo(() => {
     const scheduled: Task[] = [];
@@ -95,13 +106,12 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
     return { scheduledTasks: scheduled, unscheduledTasks: unscheduled };
   }, [tasks]);
 
-  const { startDate, endDate, dateColumns, monthLabels } = useMemo(() => {
+  const { startDate, endDate, dateColumns } = useMemo(() => {
     const today = new Date();
     const start = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
     const end = new Date(today.getFullYear(), today.getMonth() + monthOffset + monthCount, 0);
 
     const columns: { date: Date; key: string; isToday: boolean }[] = [];
-    const labels = new Map<string, string>();
     const cur = new Date(start);
 
     while (cur <= end) {
@@ -111,10 +121,6 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
         key,
         isToday: toDateStr(cur) === toDateStr(today),
       });
-      const monthKey = `${cur.getFullYear()}-${cur.getMonth()}`;
-      if (!labels.has(monthKey)) {
-        labels.set(monthKey, cur.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
-      }
       cur.setDate(cur.getDate() + 1);
     }
 
@@ -125,9 +131,101 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
     };
   }, [monthOffset, monthCount]);
 
+  const monthGroups = useMemo(() => {
+    const groups: { key: string; label: string; columns: typeof dateColumns }[] = [];
+    let current: { key: string; label: string; columns: typeof dateColumns } | null = null;
+
+    for (const col of dateColumns) {
+      const key = `${col.date.getFullYear()}-${col.date.getMonth()}`;
+      const label = col.date.toLocaleDateString('ko-KR', { month: 'long', year: 'numeric' });
+      if (!current || current.key !== key) {
+        current = { key, label, columns: [] };
+        groups.push(current);
+      }
+      current.columns.push(col);
+    }
+    return groups;
+  }, [dateColumns]);
+
   const totalDays = dateColumns.length;
 
   const dayWidth = 24;
+
+  const handleScroll = useCallback(() => {
+    if (isRestoringScrollRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const maxScroll = scrollWidth - clientWidth;
+    if (maxScroll <= 0) return;
+
+    const atLeftEdge = scrollLeft < EDGE_THRESHOLD && monthCount < MAX_MONTH_COUNT && dateColumns.length > 0;
+    const atRightEdge = scrollLeft > maxScroll - EDGE_THRESHOLD && monthCount < MAX_MONTH_COUNT;
+
+    if (atLeftEdge) {
+      if (edgeDirectionRef.current !== 'left') {
+        edgeDirectionRef.current = 'left';
+        if (edgeDwellTimerRef.current) clearTimeout(edgeDwellTimerRef.current);
+        edgeDwellTimerRef.current = setTimeout(() => {
+          edgeDwellTimerRef.current = null;
+          edgeDirectionRef.current = null;
+          const first = dateColumns[0]!;
+          const prevMonthDays = new Date(first.date.getFullYear(), first.date.getMonth(), 0).getDate();
+          pendingPrependWidthRef.current = prevMonthDays * dayWidth;
+          setMonthOffset((m) => m - 1);
+          setMonthCount((c) => Math.min(c + 1, MAX_MONTH_COUNT));
+        }, EDGE_DWELL_MS);
+      }
+    } else if (atRightEdge) {
+      if (edgeDirectionRef.current !== 'right') {
+        edgeDirectionRef.current = 'right';
+        if (edgeDwellTimerRef.current) clearTimeout(edgeDwellTimerRef.current);
+        edgeDwellTimerRef.current = setTimeout(() => {
+          edgeDwellTimerRef.current = null;
+          edgeDirectionRef.current = null;
+          pendingScrollToEndRef.current = true;
+          setMonthCount((c) => Math.min(c + 1, MAX_MONTH_COUNT));
+        }, EDGE_DWELL_MS);
+      }
+    } else {
+      if (edgeDwellTimerRef.current) {
+        clearTimeout(edgeDwellTimerRef.current);
+        edgeDwellTimerRef.current = null;
+      }
+      edgeDirectionRef.current = null;
+    }
+  }, [monthCount, dateColumns, dayWidth]);
+
+  useEffect(() => {
+    return () => {
+      if (edgeDwellTimerRef.current) clearTimeout(edgeDwellTimerRef.current);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const prepend = pendingPrependWidthRef.current;
+    const scrollToEnd = pendingScrollToEndRef.current;
+    if (el && prepend > 0) {
+      pendingPrependWidthRef.current = 0;
+      isRestoringScrollRef.current = true;
+      el.scrollLeft = el.scrollLeft + prepend;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          isRestoringScrollRef.current = false;
+        });
+      });
+    } else if (el && scrollToEnd) {
+      pendingScrollToEndRef.current = false;
+      isRestoringScrollRef.current = true;
+      el.scrollLeft = el.scrollWidth - el.clientWidth;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          isRestoringScrollRef.current = false;
+        });
+      });
+    }
+  });
 
   function getBarStyle(task: Task): { left: number; width: number } | null {
     if (!task.dueDate) return null;
@@ -143,65 +241,52 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-line/60 bg-surface">
-      {/* 헤더: TITLE + 월/일자 (높이 맞춤) */}
-      <div className="sticky top-0 z-10 flex border-b border-line bg-surface">
-        <div className="w-80 shrink-0 flex items-center px-3 border-r border-line self-stretch">
-          <p className="m-0 text-[12px] font-semibold text-text-dim uppercase">Title</p>
-        </div>
-        <div className="flex-1 min-w-0 flex flex-col overflow-x-auto">
-          <div className="flex items-center justify-between border-b border-line px-2 py-2 shrink-0">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setMonthOffset((m) => m - 1)}
-                className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"
-                aria-label="Previous month"
-              >
-                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMonthOffset((m) => m + 1)}
-                className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"
-                aria-label="Next month"
-              >
-                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </button>
-              <span className="text-[13px] font-medium text-text">
-                {dateColumns[0]?.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                {' – '}
-                {dateColumns[dateColumns.length - 1]?.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </span>
-            </div>
-          </div>
-          <div
-            className="flex border-b border-line shrink-0"
-            style={{ width: totalDays * dayWidth }}
-          >
-            {dateColumns.map((col) => (
-              <div
-                key={col.key}
-                className={`shrink-0 py-1.5 px-0.5 text-center text-[10px] border-r border-line last:border-r-0 ${
-                  col.isToday ? 'bg-accent-dim text-accent-soft font-semibold' : 'text-text-dim'
-                }`}
-                style={{ width: dayWidth }}
-              >
-                {col.date.getDate()}
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="flex flex-col rounded-2xl border border-line/60 bg-surface overflow-hidden max-h-[480px]">
+      {/* 월 네비게이션 */}
+      <div className="shrink-0 flex items-center gap-2 border-b border-line px-3 py-2 bg-surface">
+        <button
+          type="button"
+          onClick={() => setMonthOffset((m) => m - 1)}
+          className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"
+          aria-label="Previous month"
+        >
+          <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMonthOffset((m) => m + 1)}
+          className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"
+          aria-label="Next month"
+        >
+          <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+        <span className="text-[13px] font-medium text-text">
+          {dateColumns[0]?.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {' – '}
+          {dateColumns[dateColumns.length - 1]?.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </span>
       </div>
-
-      <div className="flex min-w-0">
-        {/* Left: Task list */}
-        <div className="w-80 shrink-0 border-r border-line">
-          <div className="divide-y divide-line">
+      {/* 스크롤 영역: 좌측 고정, 우측 가로 스크롤 */}
+      <div
+        ref={scrollRef}
+        className="flex-1 min-h-0 min-w-0 overflow-auto"
+        onScroll={handleScroll}
+      >
+        <div
+          className="flex shrink-0"
+          style={{ width: 320 + totalDays * dayWidth, minWidth: 320 + totalDays * dayWidth }}
+        >
+          {/* 좌측: sticky 고정 */}
+          <div className="sticky left-0 z-10 w-80 shrink-0 min-w-80 border-r border-line flex flex-col bg-surface overflow-hidden">
+            {/* Title 헤더 (월+일자 행 높이에 맞춤) */}
+            <div className="flex items-center justify-center px-3 py-2 border-b border-line bg-surface min-h-[56px]">
+              <p className="m-0 text-[12px] font-semibold text-text-dim uppercase">Title</p>
+            </div>
+            <div className="divide-y divide-line">
             {scheduledTasks.map((task, idx) => {
               const { displayTitle, tags } = parseTagsFromTitle(task.title);
               const alertType = getTaskAlertType(task, sprintEndDate);
@@ -261,13 +346,45 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
                 })}
               </>
             )}
+            </div>
           </div>
-        </div>
 
-        {/* Right: Timeline */}
-        <div className="flex-1 min-w-0 overflow-x-auto">
-          {/* Task bars */}
-          <div className="relative" style={{ width: totalDays * dayWidth, minHeight: 44 * scheduledTasks.length }}>
+          {/* 우측: 월 그룹 헤더 + 일자 헤더 + 태스크 바 (가로 스크롤) */}
+          <div
+            className="shrink-0 flex flex-col"
+            style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
+          >
+            <div
+              className="flex border-b border-line bg-surface shrink-0"
+              style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
+            >
+              {monthGroups.map((group) => (
+                <div
+                  key={group.key}
+                  className="shrink-0 flex items-center justify-center py-1.5 px-2 text-[11px] font-medium text-text border-r border-line bg-surface last:border-r-0"
+                  style={{ width: group.columns.length * dayWidth, minWidth: group.columns.length * dayWidth }}
+                >
+                  {group.label}
+                </div>
+              ))}
+            </div>
+            <div
+              className="flex border-b border-line bg-surface shrink-0"
+              style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
+            >
+              {dateColumns.map((col) => (
+                <div
+                  key={col.key}
+                  className={`shrink-0 py-1.5 px-0.5 text-center text-[10px] border-r border-line last:border-r-0 ${
+                    col.isToday ? 'bg-accent-dim text-accent-soft font-semibold' : 'text-text-dim'
+                  }`}
+                  style={{ width: dayWidth, minWidth: dayWidth }}
+                >
+                  {col.date.getDate()}
+                </div>
+              ))}
+            </div>
+            <div className="relative" style={{ minHeight: 44 * scheduledTasks.length }}>
             {scheduledTasks.map((task, idx) => {
               const style = getBarStyle(task);
               const alertType = getTaskAlertType(task, sprintEndDate);
@@ -296,6 +413,7 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       </div>

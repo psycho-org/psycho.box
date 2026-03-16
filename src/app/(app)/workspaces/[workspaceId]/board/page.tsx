@@ -436,7 +436,9 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
             ]}
           />
         ) : view === 'roadmap' ? (
-          <TaskRoadmap tasks={roadmapTasks} monthCount={2} sprintEndDate={sprintEndDate} />
+          <div className="min-w-0">
+            <TaskRoadmap tasks={roadmapTasks} monthCount={2} sprintEndDate={sprintEndDate} />
+          </div>
         ) : view === 'assignee' ? (
           <div className="flex gap-4">
             {/* 담당자 사이드바 */}
