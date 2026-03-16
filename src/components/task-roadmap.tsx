@@ -81,8 +81,10 @@ const MAX_MONTH_COUNT = 12;
 export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEndDate }: TaskRoadmapProps) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [monthCount, setMonthCount] = useState(initialMonthCount);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
   const pendingPrependWidthRef = useRef<number>(0);
+  const isSyncingHScrollRef = useRef(false);
   const pendingScrollToEndRef = useRef(false);
   const isRestoringScrollRef = useRef(false);
   const edgeDwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -151,9 +153,32 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
 
   const dayWidth = 24;
 
+  const syncHorizontalScrollToHeader = useCallback(() => {
+    if (isSyncingHScrollRef.current) return;
+    const timeline = timelineScrollRef.current;
+    const header = headerScrollRef.current;
+    if (!timeline || !header) return;
+    isSyncingHScrollRef.current = true;
+    header.scrollLeft = timeline.scrollLeft;
+    requestAnimationFrame(() => {
+      isSyncingHScrollRef.current = false;
+    });
+  }, []);
+  const syncHorizontalScrollToTimeline = useCallback(() => {
+    if (isSyncingHScrollRef.current) return;
+    const timeline = timelineScrollRef.current;
+    const header = headerScrollRef.current;
+    if (!timeline || !header) return;
+    isSyncingHScrollRef.current = true;
+    timeline.scrollLeft = header.scrollLeft;
+    requestAnimationFrame(() => {
+      isSyncingHScrollRef.current = false;
+    });
+  }, []);
+
   const handleScroll = useCallback(() => {
     if (isRestoringScrollRef.current) return;
-    const el = scrollRef.current;
+    const el = timelineScrollRef.current;
     if (!el) return;
     const { scrollLeft, scrollWidth, clientWidth } = el;
     const maxScroll = scrollWidth - clientWidth;
@@ -203,7 +228,7 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
   }, []);
 
   useLayoutEffect(() => {
-    const el = scrollRef.current;
+    const el = timelineScrollRef.current;
     const prepend = pendingPrependWidthRef.current;
     const scrollToEnd = pendingScrollToEndRef.current;
     if (el && prepend > 0) {
@@ -241,7 +266,7 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
   }
 
   return (
-    <div className="flex flex-col rounded-2xl border border-line/60 bg-surface overflow-hidden max-h-[480px]">
+    <div className="flex flex-col h-[480px] min-h-0 rounded-2xl border border-line/60 bg-surface overflow-hidden">
       {/* 월 네비게이션 */}
       <div className="shrink-0 flex items-center gap-2 border-b border-line px-3 py-2 bg-surface">
         <button
@@ -270,23 +295,60 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
           {dateColumns[dateColumns.length - 1]?.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
       </div>
-      {/* 스크롤 영역: 좌측 고정, 우측 가로 스크롤 */}
-      <div
-        ref={scrollRef}
-        className="flex-1 min-h-0 min-w-0 overflow-auto"
-        onScroll={handleScroll}
-      >
-        <div
-          className="flex shrink-0"
-          style={{ width: 320 + totalDays * dayWidth, minWidth: 320 + totalDays * dayWidth }}
-        >
-          {/* 좌측: sticky 고정 */}
-          <div className="sticky left-0 z-10 w-80 shrink-0 min-w-80 border-r border-line flex flex-col bg-surface overflow-hidden">
-            {/* Title 헤더 (월+일자 행 높이에 맞춤) */}
-            <div className="flex items-center justify-center px-3 py-2 border-b border-line bg-surface min-h-[56px]">
-              <p className="m-0 text-[12px] font-semibold text-text-dim uppercase">Title</p>
+      {/* 본문: 헤더 고정, 세로 스크롤은 우측(타임라인)에만 */}
+      <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+        {/* 헤더 행 */}
+        <div className="flex shrink-0 border-b border-line bg-surface">
+          <div className="flex items-center justify-center px-3 py-2 w-80 shrink-0 min-w-80 border-r border-line bg-surface min-h-[56px]">
+            <p className="m-0 text-[12px] font-semibold text-text-dim uppercase">Title</p>
+          </div>
+          <div
+            ref={headerScrollRef}
+            className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden"
+            onScroll={syncHorizontalScrollToTimeline}
+          >
+            <div
+              className="flex flex-col shrink-0 bg-surface"
+              style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
+            >
+              <div
+                className="flex border-b border-line bg-surface shrink-0"
+                style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
+              >
+                {monthGroups.map((group) => (
+                  <div
+                    key={group.key}
+                    className="shrink-0 flex items-center justify-center py-1.5 px-2 text-[11px] font-medium text-text border-r border-line bg-surface last:border-r-0"
+                    style={{ width: group.columns.length * dayWidth, minWidth: group.columns.length * dayWidth }}
+                  >
+                    {group.label}
+                  </div>
+                ))}
+              </div>
+              <div
+                className="flex border-b-0 border-line bg-surface shrink-0"
+                style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
+              >
+                {dateColumns.map((col) => (
+                  <div
+                    key={col.key}
+                    className={`shrink-0 py-1.5 px-0.5 text-center text-[10px] border-r border-line last:border-r-0 ${
+                      col.isToday ? 'bg-accent-dim text-accent-soft font-semibold' : 'text-text-dim'
+                    }`}
+                    style={{ width: dayWidth, minWidth: dayWidth }}
+                  >
+                    {col.date.getDate()}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="divide-y divide-line">
+          </div>
+        </div>
+        {/* 세로 스크롤: Task 목록 + 타임라인 (스크롤바 우측) */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div className="flex">
+            <div className="w-80 shrink-0 border-r border-line bg-surface">
+              <div className="divide-y divide-line">
             {scheduledTasks.map((task, idx) => {
               const { displayTitle, tags } = parseTagsFromTitle(task.title);
               const alertType = getTaskAlertType(task, sprintEndDate);
@@ -346,45 +408,21 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
                 })}
               </>
             )}
+              </div>
             </div>
-          </div>
-
-          {/* 우측: 월 그룹 헤더 + 일자 헤더 + 태스크 바 (가로 스크롤) */}
-          <div
-            className="shrink-0 flex flex-col"
-            style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
-          >
+            {/* 우측: 타임라인 (가로 스크롤, 헤더와 동기화) */}
             <div
-              className="flex border-b border-line bg-surface shrink-0"
-              style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
+              ref={timelineScrollRef}
+              className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden"
+              onScroll={() => {
+                handleScroll();
+                syncHorizontalScrollToHeader();
+              }}
             >
-              {monthGroups.map((group) => (
-                <div
-                  key={group.key}
-                  className="shrink-0 flex items-center justify-center py-1.5 px-2 text-[11px] font-medium text-text border-r border-line bg-surface last:border-r-0"
-                  style={{ width: group.columns.length * dayWidth, minWidth: group.columns.length * dayWidth }}
-                >
-                  {group.label}
-                </div>
-              ))}
-            </div>
-            <div
-              className="flex border-b border-line bg-surface shrink-0"
-              style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth }}
-            >
-              {dateColumns.map((col) => (
-                <div
-                  key={col.key}
-                  className={`shrink-0 py-1.5 px-0.5 text-center text-[10px] border-r border-line last:border-r-0 ${
-                    col.isToday ? 'bg-accent-dim text-accent-soft font-semibold' : 'text-text-dim'
-                  }`}
-                  style={{ width: dayWidth, minWidth: dayWidth }}
-                >
-                  {col.date.getDate()}
-                </div>
-              ))}
-            </div>
-            <div className="relative" style={{ minHeight: 44 * scheduledTasks.length }}>
+              <div
+                className="relative shrink-0"
+                style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth, minHeight: 44 * scheduledTasks.length }}
+              >
             {scheduledTasks.map((task, idx) => {
               const style = getBarStyle(task);
               const alertType = getTaskAlertType(task, sprintEndDate);
@@ -413,6 +451,7 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
                 </div>
               );
             })}
+              </div>
             </div>
           </div>
         </div>
