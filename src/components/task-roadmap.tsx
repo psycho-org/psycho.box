@@ -143,11 +143,11 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-line/60 bg-surface-2/95">
+    <div className="overflow-x-auto rounded-2xl border border-line/60 bg-surface">
       <div className="flex min-w-0">
         {/* Left: Task list */}
         <div className="w-80 shrink-0 border-r border-line">
-          <div className="sticky left-0 top-0 z-10 border-b border-line bg-surface-2 px-3 py-2.5">
+          <div className="sticky left-0 top-0 z-10 border-b border-line bg-surface px-3 py-2.5">
             <p className="m-0 text-[12px] font-semibold text-text-dim uppercase">Title</p>
           </div>
           <div className="divide-y divide-line">
@@ -178,7 +178,7 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
             })}
             {unscheduledTasks.length > 0 && (
               <>
-                <div className="px-3 py-2 bg-surface-3 border-t-2 border-line">
+                <div className="px-3 py-2 bg-surface border-t-2 border-line">
                   <p className="m-0 text-[11px] font-semibold text-text-dim uppercase">
                     Unscheduled ({unscheduledTasks.length})
                   </p>
@@ -189,7 +189,7 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
                   return (
                     <div
                       key={task.id}
-                      className={`flex items-start gap-2 px-3 py-2.5 min-h-[44px] bg-surface-3/50 ${alertType ? ALERT_BG[alertType] : ''}`}
+                      className={`flex items-start gap-2 px-3 py-2.5 min-h-[44px] bg-surface ${alertType ? ALERT_BG[alertType] : ''}`}
                     >
                       <span className="text-[11px] text-text-dim tabular-nums shrink-0 w-5">
                         {scheduledTasks.length + idx + 1}
@@ -215,7 +215,7 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
 
         {/* Right: Timeline */}
         <div className="flex-1 min-w-0 overflow-x-auto">
-          <div className="flex items-center justify-between border-b border-line bg-surface-2 px-2 py-2">
+          <div className="flex items-center justify-between border-b border-line bg-surface px-2 py-2">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -247,7 +247,7 @@ export function TaskRoadmap({ tasks, monthCount = 2, sprintEndDate }: TaskRoadma
 
           {/* Date headers */}
           <div
-            className="flex border-b border-line bg-surface-2"
+            className="flex border-b border-line bg-surface"
             style={{ width: totalDays * dayWidth }}
           >
             {dateColumns.map((col) => (

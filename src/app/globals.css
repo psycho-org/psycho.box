@@ -1,60 +1,85 @@
 @import "tailwindcss";
 
-@theme {
-  --color-bg: #0d0f14;
-  --color-surface: #13161e;
-  --color-surface-2: #1a1e28;
-  --color-surface-3: #222736;
-  --color-line: #2a2f3d;
-  --color-line-2: #353b4e;
-  --color-text: #e8eaf2;
-  --color-text-soft: #8b90a8;
-  --color-text-dim: #555a72;
-  --color-accent: #7b74e8;
-  --color-accent-soft: #9d97f0;
-  --color-accent-dim: rgba(123, 116, 232, 0.16);
-  --color-green: #3ecf8e;
-  --color-orange: #ff8c42;
-  --color-red: #ff4d6d;
-  --color-blue: #4fb3f6;
-  --color-yellow: #ffd166;
-  --color-purple: #a78bfa;
-
-  /* Task status dot colors (톤 통일) */
-  --color-task-todo: #ffd166;
-  --color-task-inprogress: #3ecf8e;
-  --color-task-done: #a78bfa;
-  --color-task-cancelled: #6b7280;
-  --color-task-backlog: #9ca3af; /* 테두리만, 투명 내부 */
-
-  --breakpoint-lg: 960px;
+/* 어두운 테마 (기본) - @theme inline에서 참조 */
+:root {
+  --theme-bg: #0d0f14;
+  --theme-surface: #13161e;
+  --theme-surface-2: #1a1e28;
+  --theme-surface-3: #222736;
+  --theme-line: #2a2f3d;
+  --theme-line-2: #353b4e;
+  --theme-text: #e8eaf2;
+  --theme-text-soft: #8b90a8;
+  --theme-text-dim: #555a72;
+  --theme-accent: #7b74e8;
+  --theme-accent-soft: #9d97f0;
+  --theme-accent-dim: rgba(123, 116, 232, 0.16);
+  --theme-green: #3ecf8e;
+  --theme-orange: #ff8c42;
+  --theme-red: #ff4d6d;
+  --theme-blue: #4fb3f6;
+  --theme-yellow: #ffd166;
+  --theme-purple: #a78bfa;
+  --theme-task-todo: #ffd166;
+  --theme-task-inprogress: #3ecf8e;
+  --theme-task-done: #a78bfa;
+  --theme-task-cancelled: #6b7280;
+  --theme-task-backlog: #9ca3af;
 }
 
 /* 밝은 테마 (data-theme="light"일 때) */
-html[data-theme="light"] {
-  --color-bg: #f5f6f8;
-  --color-surface: #ffffff;
-  --color-surface-2: #f0f1f4;
-  --color-surface-3: #e4e6eb;
-  --color-line: #d1d5db;
-  --color-line-2: #9ca3af;
-  --color-text: #1f2937;
-  --color-text-soft: #4b5563;
-  --color-text-dim: #6b7280;
-  --color-accent: #6d66d4;
-  --color-accent-soft: #5b54c8;
-  --color-accent-dim: rgba(109, 102, 212, 0.12);
-  --color-green: #22c55e;
-  --color-orange: #f97316;
-  --color-red: #ef4444;
-  --color-blue: #3b82f6;
-  --color-yellow: #eab308;
-  --color-purple: #8b5cf6;
-  --color-task-todo: #eab308;
-  --color-task-inprogress: #22c55e;
-  --color-task-done: #8b5cf6;
-  --color-task-cancelled: #6b7280;
-  --color-task-backlog: #9ca3af;
+[data-theme="light"] {
+  --theme-bg: #f5f6f8;
+  --theme-surface: #ffffff;
+  --theme-surface-2: #f0f1f4;
+  --theme-surface-3: #e4e6eb;
+  --theme-line: #d1d5db;
+  --theme-line-2: #9ca3af;
+  --theme-text: #1f2937;
+  --theme-text-soft: #4b5563;
+  --theme-text-dim: #6b7280;
+  --theme-accent: #6d66d4;
+  --theme-accent-soft: #5b54c8;
+  --theme-accent-dim: rgba(109, 102, 212, 0.12);
+  --theme-green: #22c55e;
+  --theme-orange: #f97316;
+  --theme-red: #ef4444;
+  --theme-blue: #3b82f6;
+  --theme-yellow: #eab308;
+  --theme-purple: #8b5cf6;
+  --theme-task-todo: #eab308;
+  --theme-task-inprogress: #22c55e;
+  --theme-task-done: #8b5cf6;
+  --theme-task-cancelled: #6b7280;
+  --theme-task-backlog: #9ca3af;
+}
+
+@theme inline {
+  --color-bg: var(--theme-bg);
+  --color-surface: var(--theme-surface);
+  --color-surface-2: var(--theme-surface-2);
+  --color-surface-3: var(--theme-surface-3);
+  --color-line: var(--theme-line);
+  --color-line-2: var(--theme-line-2);
+  --color-text: var(--theme-text);
+  --color-text-soft: var(--theme-text-soft);
+  --color-text-dim: var(--theme-text-dim);
+  --color-accent: var(--theme-accent);
+  --color-accent-soft: var(--theme-accent-soft);
+  --color-accent-dim: var(--theme-accent-dim);
+  --color-green: var(--theme-green);
+  --color-orange: var(--theme-orange);
+  --color-red: var(--theme-red);
+  --color-blue: var(--theme-blue);
+  --color-yellow: var(--theme-yellow);
+  --color-purple: var(--theme-purple);
+  --color-task-todo: var(--theme-task-todo);
+  --color-task-inprogress: var(--theme-task-inprogress);
+  --color-task-done: var(--theme-task-done);
+  --color-task-cancelled: var(--theme-task-cancelled);
+  --color-task-backlog: var(--theme-task-backlog);
+
+  --breakpoint-lg: 960px;
 }
 
 @layer base {

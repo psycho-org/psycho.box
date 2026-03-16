@@ -268,7 +268,7 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
       {/* 좌측 하단 플로팅: 리스트/칸반 전환 + 테마 전환 */}
       <div className="fixed bottom-4 left-4 z-[60] flex flex-col gap-2">
         {viewToggleConfig && (
-          <div className="shadow-lg rounded-full">
+          <div className="shrink-0 shadow-lg rounded-full">
             <ViewModeToggle
               value={viewToggleConfig.getValue(searchParams.get('display'))}
               onChange={setViewDisplay}
@@ -296,7 +296,7 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
           </div>
           <UserMenu />
         </header>
-        <div className="flex-1 p-4 lg:p-6 overflow-auto min-w-0">{children}</div>
+        <div className="flex-1 p-4 lg:p-6 overflow-auto min-w-0 bg-surface">{children}</div>
       </main>
     </div>
   );

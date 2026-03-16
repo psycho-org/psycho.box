@@ -360,7 +360,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       workspaceName="워크스페이스"
       title={pageTitle}
     >
-      <section className="bg-surface/90 border border-line/40 rounded-2xl p-5 shadow-sm">
+      <section className="bg-surface border border-line/40 rounded-2xl p-5 shadow-sm">
         {loading ? (
           <p className="text-text-soft text-[13px]">태스크 로딩 중...</p>
         ) : error ? (
@@ -495,7 +495,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                   return (
                     <div
                       key={status}
-                      className="flex flex-col min-w-0 rounded-2xl bg-surface-2/70 border border-line/40 overflow-hidden"
+                      className="flex flex-col min-w-0 rounded-2xl bg-surface border border-line/40 overflow-hidden"
                     >
                       <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
                         <div className="min-w-0 flex-1">
@@ -571,7 +571,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
               return (
                 <div
                   key={status}
-                  className="flex flex-col min-w-0 rounded-2xl bg-surface-2/70 border border-line/40 overflow-hidden"
+                  className="flex flex-col min-w-0 rounded-2xl bg-surface border border-line/40 overflow-hidden"
                 >
                   {/* 컬럼 헤더 */}
                   <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
