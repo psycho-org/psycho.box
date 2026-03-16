@@ -4,6 +4,8 @@ import { use, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { TaskStatusDot, CollapsibleTableList } from '@/components/ui';
+import { TodoCard } from '@/components/todo-card';
+import { TodoCardList } from '@/components/todo-card-list';
 import { TaskCreateModal } from '@/components/task-create-modal';
 import { TaskRoadmap } from '@/components/task-roadmap';
 import { apiRequest } from '@/lib/client';
@@ -59,11 +61,11 @@ const ALERT_DATE_COLOR = {
   'sprint-ended': 'text-[#d96b6b]',
 } as const;
 
-const COLUMNS: { label: string; status: TaskStatus; description: string }[] = [
-  { label: '할일', status: 'TODO', description: '시작 전 대기 중' },
-  { label: '진행중', status: 'IN_PROGRESS', description: '현재 진행 중' },
-  { label: '검토중', status: 'CANCELLED', description: '검토 대기 중' },
-  { label: '완료', status: 'DONE', description: '완료됨' },
+const COLUMNS: { label: string; status: TaskStatus }[] = [
+  { label: '할일', status: 'TODO' },
+  { label: '진행중', status: 'IN_PROGRESS' },
+  { label: '검토중', status: 'CANCELLED' },
+  { label: '완료', status: 'DONE' },
 ];
 
 /** 제목에서 [TAG] 패턴 추출 */
@@ -166,7 +168,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     ? viewParam
     : 'sprint';
   const displayParam = searchParams.get('display');
-  const display = displayParam === 'list' ? 'list' : 'kanban';
+  const display = displayParam === 'list' ? 'list' : displayParam === 'card' ? 'card' : 'kanban';
   const [assigneesExpanded, setAssigneesExpanded] = useState(true);
   const [selectedAssignee, setSelectedAssignee] = useState<AssigneeFilterKey | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -365,6 +367,19 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
           <p className="text-text-soft text-[13px]">태스크 로딩 중...</p>
         ) : error ? (
           <p className="text-red text-[13px]">{error}</p>
+        ) : display === 'card' && view !== 'roadmap' ? (
+          <TodoCardList
+            tasks={(view === 'my' ? myTasks : view === 'assignee' ? filteredTasks : tasks).map((t) => ({
+              id: t.id,
+              title: t.title,
+              status: t.status,
+              dueDate: t.dueDate,
+              assignee: t.assignee ? { id: t.assignee.id, name: t.assignee.name ?? t.assignee.email ?? '알 수 없음' } : null,
+            }))}
+            sprintEndDate={sprintEndDate}
+            columns={3}
+            emptyMessage="태스크가 없습니다."
+          />
         ) : display === 'list' ? (
           <CollapsibleTableList<Task>
             groups={listGroups}
@@ -490,7 +505,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
             {/* 담당자별 태스크 보드 */}
             <div className="flex-1 min-w-0">
               <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-1">
-                {COLUMNS.map(({ label, status, description }) => {
+                {COLUMNS.map(({ label, status }) => {
                   const items = tasksByStatus(status);
                   return (
                     <div
@@ -508,7 +523,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                               </span>
                             </h4>
                           </div>
-                          <p className="m-0 text-[11px] text-text-dim">{description}</p>
                         </div>
                         <button
                           type="button"
@@ -520,43 +534,19 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                         </button>
                       </div>
                       <div className="flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px]">
-                        {items.map((task) => {
-                          const { tags, displayTitle } = parseTagsFromTitle(task.title);
-                          const alertType = getTaskAlertType(task, sprintEndDate);
-                          return (
-                            <div
-                              key={task.id}
-                              className={`group rounded-2xl border border-line/40 bg-surface/90 p-3 hover:border-line-2/60 hover:bg-surface/95 transition-all duration-200 cursor-pointer shadow-sm ${alertType ? ALERT_BG[alertType] : ''}`}
-                            >
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <div className="flex items-start gap-2 min-w-0 flex-1">
-                                  <TaskStatusDot status={task.status} className="size-2 shrink-0 mt-0.5" />
-                                  <p className="m-0 text-[13px] font-medium text-text line-clamp-2 flex-1">
-                                    {displayTitle}
-                                  </p>
-                                </div>
-                                <AssigneeAvatar assignee={task.assignee} />
-                              </div>
-                              {tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {tags.map((t) => (
-                                    <span
-                                      key={t}
-                                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${TAG_COLORS[t.toUpperCase()] ?? TAG_COLORS.DEFAULT}`}
-                                    >
-                                      {t}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                              {task.dueDate && (
-                                <p className={`m-0 mt-2 text-[11px] ${alertType ? ALERT_DATE_COLOR[alertType] : 'text-text-dim'}`}>
-                                  {new Date(task.dueDate).toLocaleDateString('ko-KR')}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
+                        {items.map((task) => (
+                          <TodoCard
+                            key={task.id}
+                            task={{
+                              id: task.id,
+                              title: task.title,
+                              status: task.status,
+                              dueDate: task.dueDate,
+                              assignee: task.assignee ? { id: task.assignee.id, name: task.assignee.name ?? task.assignee.email ?? '알 수 없음' } : null,
+                            }}
+                            sprintEndDate={sprintEndDate}
+                          />
+                        ))}
                       </div>
                     </div>
                   );
@@ -566,7 +556,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
           </div>
         ) : (
           <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-1">
-            {COLUMNS.map(({ label, status, description }) => {
+            {COLUMNS.map(({ label, status }) => {
               const items = tasksByStatus(status);
               return (
                 <div
@@ -585,7 +575,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                           </span>
                         </h4>
                       </div>
-                      <p className="m-0 text-[11px] text-text-dim">{description}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
@@ -607,43 +596,19 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                   </div>
                   {/* 카드 목록 */}
                   <div className="flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px]">
-                    {items.map((task) => {
-                      const { tags, displayTitle } = parseTagsFromTitle(task.title);
-                      const alertType = getTaskAlertType(task, sprintEndDate);
-                      return (
-                        <div
-                          key={task.id}
-                          className={`group rounded-2xl border border-line/40 bg-surface/90 p-3 hover:border-line-2/60 hover:bg-surface/95 transition-all duration-200 cursor-pointer shadow-sm ${alertType ? ALERT_BG[alertType] : ''}`}
-                        >
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="flex items-start gap-2 min-w-0 flex-1">
-                              <TaskStatusDot status={task.status} className="size-2 shrink-0 mt-0.5" />
-                              <p className="m-0 text-[13px] font-medium text-text line-clamp-2 flex-1">
-                                {displayTitle}
-                              </p>
-                            </div>
-                            <AssigneeAvatar assignee={task.assignee} />
-                          </div>
-                          {tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {tags.map((t) => (
-                                <span
-                                  key={t}
-                                  className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${TAG_COLORS[t.toUpperCase()] ?? TAG_COLORS.DEFAULT}`}
-                                >
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {task.dueDate && (
-                            <p className={`m-0 mt-2 text-[11px] ${alertType ? ALERT_DATE_COLOR[alertType] : 'text-text-dim'}`}>
-                              {new Date(task.dueDate).toLocaleDateString('ko-KR')}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {items.map((task) => (
+                      <TodoCard
+                        key={task.id}
+                        task={{
+                          id: task.id,
+                          title: task.title,
+                          status: task.status,
+                          dueDate: task.dueDate,
+                          assignee: task.assignee ? { id: task.assignee.id, name: task.assignee.name ?? task.assignee.email ?? '알 수 없음' } : null,
+                        }}
+                        sprintEndDate={sprintEndDate}
+                      />
+                    ))}
                   </div>
                 </div>
               );

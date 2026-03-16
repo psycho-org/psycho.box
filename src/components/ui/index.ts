@@ -24,6 +24,9 @@ export { TaskStatusDot } from './task-status-dot';
 export { ViewModeToggle } from './view-mode-toggle';
 export type { ViewModeToggleProps, ViewDisplayMode } from './view-mode-toggle';
 
+export { BoardViewToggle } from './board-view-toggle';
+export type { BoardViewToggleProps, BoardViewDisplayMode } from './board-view-toggle';
+
 export { ViewToggleFloating } from './view-toggle-floating';
 export type { ViewToggleFloatingProps } from './view-toggle-floating';
 

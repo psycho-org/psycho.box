@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
 import { UserMenu } from '@/components/user-menu';
-import { ViewModeToggle } from '@/components/ui';
+import { ViewModeToggle, BoardViewToggle } from '@/components/ui';
 import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { VIEW_TOGGLE_PAGES } from '@/lib/view-toggle-config';
 
@@ -179,6 +179,17 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
     router.push(`${pathname}?${params.toString()}`);
   }
 
+  function setBoardViewDisplay(mode: 'list' | 'kanban' | 'card') {
+    const params = new URLSearchParams(searchParams.toString());
+    if (mode === 'list') params.set('display', 'list');
+    else if (mode === 'card') params.set('display', 'card');
+    else params.delete('display');
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  const boardDisplay = searchParams.get('display');
+  const boardViewDisplay = boardDisplay === 'list' ? 'list' : boardDisplay === 'card' ? 'card' : 'kanban';
+
   const boardNavItems = [
     { view: 'sprint', label: '스프린트', icon: BoardIcon },
     { view: 'assignee', label: '담당자', icon: PersonIcon },
@@ -265,9 +276,18 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
         </nav>
       </aside>
 
-      {/* 좌측 하단 플로팅: 리스트/칸반 전환 + 테마 전환 */}
+      {/* 좌측 하단 플로팅: 리스트/칸반/카드 전환 + 테마 전환 */}
       <div className="fixed bottom-4 left-4 z-[60] flex flex-col gap-2">
-        {viewToggleConfig && (
+        {isBoardPage ? (
+          <div className="shrink-0 shadow-lg rounded-full">
+            <BoardViewToggle
+              value={boardViewDisplay}
+              onChange={setBoardViewDisplay}
+              kanbanLabel="칸반"
+              cardLabel="카드"
+            />
+          </div>
+        ) : viewToggleConfig ? (
           <div className="shrink-0 shadow-lg rounded-full">
             <ViewModeToggle
               value={viewToggleConfig.getValue(searchParams.get('display'))}
@@ -275,7 +295,7 @@ export function AppShell({ workspaceId, workspaceName, title, children }: AppShe
               kanbanLabel={viewToggleConfig.kanbanLabel}
             />
           </div>
-        )}
+        ) : null}
         <ThemeToggleFloating />
       </div>
 
