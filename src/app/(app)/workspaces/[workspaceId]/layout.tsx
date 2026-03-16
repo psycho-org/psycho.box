@@ -1,0 +1,44 @@
+'use client';
+
+import { use } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { AppShell } from '@/components/app-shell';
+import { PageTitleProvider } from '@/components/page-title-context';
+
+const VIEW_TITLES: Record<string, string> = {
+  sprint: '스프린트',
+  assignee: '담당자',
+  my: '나의 테스크',
+  roadmap: '로드맵',
+};
+
+function getTitleFromPath(pathname: string, view: string | null): string {
+  if (pathname.endsWith('/analysis')) return '분석';
+  if (pathname.endsWith('/members')) return '멤버 관리';
+  if (pathname.endsWith('/board')) {
+    return VIEW_TITLES[view ?? 'sprint'] ?? '스프린트';
+  }
+  return '보드';
+}
+
+export default function WorkspaceLayout({
+  params,
+  children,
+}: {
+  params: Promise<{ workspaceId: string }>;
+  children: React.ReactNode;
+}) {
+  const { workspaceId } = use(params);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const view = searchParams.get('view');
+  const initialTitle = getTitleFromPath(pathname ?? '', view);
+
+  return (
+    <PageTitleProvider initialTitle={initialTitle}>
+      <AppShell workspaceId={workspaceId} workspaceName="워크스페이스">
+        {children}
+      </AppShell>
+    </PageTitleProvider>
+  );
+}

@@ -4,13 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '@/lib/client';
-
-interface User {
-  id: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-}
+import { useAuth, type AuthUser } from '@/components/auth-provider';
 
 function ChevronDownIcon({ className }: { className?: string }) {
   return (
@@ -69,7 +63,7 @@ function LogOutIcon({ className }: { className?: string }) {
   );
 }
 
-function getInitials(user: User): string {
+function getInitials(user: AuthUser): string {
   const first = (user.firstName ?? '').trim();
   const last = (user.lastName ?? '').trim();
   if (first && last) return `${first[0]}${last[0]}`.toUpperCase();
@@ -79,7 +73,7 @@ function getInitials(user: User): string {
   return '?';
 }
 
-function getDisplayName(user: User): string {
+function getDisplayName(user: AuthUser): string {
   const first = (user.firstName ?? '').trim();
   const last = (user.lastName ?? '').trim();
   if (first && last) return `${first} ${last}`;
@@ -88,25 +82,11 @@ function getDisplayName(user: User): string {
 }
 
 export function UserMenu() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading, setUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    apiRequest<{ user?: User }>('/api/real/auth/me')
-      .then((result) => {
-        if (result.ok && result.data?.user) {
-          setUser(result.data.user);
-        } else {
-          setUser(null);
-        }
-      })
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -121,6 +101,7 @@ export function UserMenu() {
   async function handleLogout() {
     setLoggingOut(true);
     await apiRequest('/api/real/auth/logout', { method: 'POST' });
+    setUser(null);
     setOpen(false);
     router.push('/login');
     setLoggingOut(false);
@@ -133,14 +114,7 @@ export function UserMenu() {
   }
 
   if (!user) {
-    return (
-      <Link
-        href="/login"
-        className="shrink-0 text-[12px] lg:text-[13px] text-text-soft hover:text-text transition-colors"
-      >
-        로그인
-      </Link>
-    );
+    return null;
   }
 
   return (

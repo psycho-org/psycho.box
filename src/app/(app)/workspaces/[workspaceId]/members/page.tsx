@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { use } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AppShell } from '@/components/app-shell';
+import { usePageTitle } from '@/components/page-title-context';
 import { AddMemberModal } from '@/components/add-member-modal';
 import { Snackbar } from '@/components/ui/snackbar';
 import { CardList, CollapsibleTableList } from '@/components/ui';
@@ -66,7 +66,12 @@ function RoleBadge({ role, iconOnly = false, className = '' }: { role: Workspace
 
 export default function MembersPage({ params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = use(params);
+  const pageTitleCtx = usePageTitle();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    pageTitleCtx?.setTitle('멤버 관리');
+  }, [pageTitleCtx]);
   const viewMode: ViewMode = searchParams.get('display') === 'card' ? 'card' : 'list';
 
   const [members, setMembers] = useState<Member[]>([]);
@@ -105,12 +110,8 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
   ].filter((g) => g.count > 0);
 
   return (
-    <AppShell
-      workspaceId={workspaceId}
-      workspaceName="워크스페이스"
-      title="멤버 관리"
-    >
-      <section className="bg-surface/90 border border-line/40 rounded-2xl p-5 min-w-0 overflow-hidden shadow-sm">
+    <>
+    <section className="bg-surface/90 border border-line/40 rounded-2xl p-5 min-w-0 overflow-hidden shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-2.5">
           <h3 className="m-0 text-base shrink-0">멤버 목록</h3>
           <div className="flex items-center gap-1">
@@ -169,23 +170,23 @@ export default function MembersPage({ params }: { params: Promise<{ workspaceId:
           </div>
         )}
 
-      </section>
+    </section>
 
-      <AddMemberModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        workspaceId={workspaceId}
-        onSuccess={() => {
-          loadMembers();
-          setSnackbarOpen(true);
-        }}
-      />
+    <AddMemberModal
+      open={addModalOpen}
+      onClose={() => setAddModalOpen(false)}
+      workspaceId={workspaceId}
+      onSuccess={() => {
+        loadMembers();
+        setSnackbarOpen(true);
+      }}
+    />
 
-      <Snackbar
-        open={snackbarOpen}
-        message="초대 메일이 발송되었습니다."
-        onClose={() => setSnackbarOpen(false)}
-      />
-    </AppShell>
+    <Snackbar
+      open={snackbarOpen}
+      message="초대 메일이 발송되었습니다."
+      onClose={() => setSnackbarOpen(false)}
+    />
+    </>
   );
 }

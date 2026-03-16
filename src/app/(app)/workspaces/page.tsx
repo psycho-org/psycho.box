@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
+import { UserMenu } from '@/components/user-menu';
 import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { CreateWorkspaceModal } from '@/components/create-workspace-modal';
 import { apiRequest } from '@/lib/client';
@@ -120,12 +121,7 @@ export default function WorkspacesPage() {
               <p className="m-0 mt-0.5 text-[12px] lg:text-[13px] text-text-soft">워크스페이스 목록</p>
             </div>
           </div>
-          <Link
-            href="/login"
-            className="shrink-0 text-[12px] lg:text-[13px] text-text-soft hover:text-text transition-colors"
-          >
-            로그인
-          </Link>
+          <UserMenu />
         </header>
         <div className="flex-1 p-4 lg:p-6 overflow-auto min-w-0">
           <section className="bg-surface/95 border border-line/60 rounded-2xl p-3.5 shadow-sm">

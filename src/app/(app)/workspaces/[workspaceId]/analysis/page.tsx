@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useState } from 'react';
-import { AppShell } from '@/components/app-shell';
+import { use, useEffect, useState } from 'react';
+import { usePageTitle } from '@/components/page-title-context';
 import { Button } from '@/components/ui/button';
 import { ViewModeToggle } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
@@ -19,7 +19,12 @@ export default function AnalysisPage({
   params: Promise<{ workspaceId: string }>;
 }) {
   const { workspaceId } = use(params);
+  const pageTitleCtx = usePageTitle();
   const [sprintId, setSprintId] = useState('');
+
+  useEffect(() => {
+    pageTitleCtx?.setTitle('분석');
+  }, [pageTitleCtx]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -55,12 +60,7 @@ export default function AnalysisPage({
   }
 
   return (
-    <AppShell
-      workspaceId={workspaceId}
-      workspaceName=""
-      title="분석"
-    >
-      <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6">
         <section className="rounded-2xl border border-line/40 bg-surface/90 p-6 shadow-sm">
           <h2 className="text-base font-semibold mb-4">스프린트 분석 요청</h2>
           <p className="text-[13px] text-text-soft mb-4">
@@ -103,6 +103,5 @@ export default function AnalysisPage({
           </p>
         </section>
       </div>
-    </AppShell>
   );
 }

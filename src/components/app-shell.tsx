@@ -8,6 +8,7 @@ import { UserMenu } from '@/components/user-menu';
 import { ViewModeToggle, BoardViewToggle } from '@/components/ui';
 import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { VIEW_TOGGLE_PAGES } from '@/lib/view-toggle-config';
+import { usePageTitle } from '@/components/page-title-context';
 
 function MenuIcon({ className }: { className?: string }) {
   return (
@@ -28,7 +29,7 @@ function XIcon({ className }: { className?: string }) {
 interface AppShellProps {
   workspaceId: string;
   workspaceName: string;
-  title: string;
+  title?: string;
   children: React.ReactNode;
 }
 
@@ -155,9 +156,11 @@ function PersonIcon({ className }: { className?: string }) {
   );
 }
 
-export function AppShell({ workspaceId, workspaceName, title, children }: AppShellProps) {
+export function AppShell({ workspaceId, workspaceName, title: titleProp, children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const pageTitleCtx = usePageTitle();
+  const title = pageTitleCtx?.title ?? titleProp ?? '보드';
   const searchParams = useSearchParams();
   const router = useRouter();
   const basePath = `/workspaces/${workspaceId}`;

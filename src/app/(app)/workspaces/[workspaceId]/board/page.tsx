@@ -2,7 +2,7 @@
 
 import { use, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AppShell } from '@/components/app-shell';
+import { usePageTitle } from '@/components/page-title-context';
 import { TaskStatusDot, CollapsibleTableList } from '@/components/ui';
 import { TodoCard } from '@/components/todo-card';
 import { TodoCardList } from '@/components/todo-card-list';
@@ -356,13 +356,14 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const pageTitle =
     view === 'assignee' ? `${viewTitles[view]} (${assigneeCount})` : viewTitles[view];
 
+  const pageTitleCtx = usePageTitle();
+  useEffect(() => {
+    pageTitleCtx?.setTitle(pageTitle);
+  }, [pageTitle, pageTitleCtx]);
+
   return (
-    <AppShell
-      workspaceId={workspaceId}
-      workspaceName="워크스페이스"
-      title={pageTitle}
-    >
-      <section className="bg-surface border border-line/40 rounded-2xl p-5 shadow-sm">
+    <>
+    <section className="bg-surface border border-line/40 rounded-2xl p-5 shadow-sm">
         {loading ? (
           <p className="text-text-soft text-[13px]">태스크 로딩 중...</p>
         ) : error ? (
@@ -625,6 +626,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
         defaultStatus={createModalStatus}
         onSuccess={loadTasks}
       />
-    </AppShell>
+    </>
   );
 }
