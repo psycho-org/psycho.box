@@ -17,10 +17,10 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
 
 ```json
 {
-  "timestamp": "2025-03-14T12:00:00.000Z",
+  "timestamp": "2026-03-16T00:00:00.000Z",
   "status": 200,
   "message": "success",
-  "data": { ... }
+  "data": {}
 }
 ```
 
@@ -28,77 +28,50 @@ psycho.box(Next.js 프론트엔드)에서 참조하는 psycho.pizza 백엔드 AP
 
 ```json
 {
-  "timestamp": "...",
+  "timestamp": "2026-03-16T00:00:00.000Z",
   "status": 200,
   "message": "success",
-  "data": [ ... ],
+  "data": [],
   "pageInfo": {
-    "currentPage": 1,
+    "currentPage": 0,
     "size": 10,
-    "totalPages": 5,
-    "totalElements": 50
+    "totalPages": 1,
+    "totalElements": 0
   }
 }
 ```
 
-### 에러 응답 (ErrorResponse)
+### 에러 응답 형식 (ErrorResponse)
 
 ```json
 {
-  "timestamp": "...",
+  "timestamp": "2026-03-16T00:00:00.000Z",
   "status": 400,
-  "message": "에러 메시지",
-  "error": "에러 상세",
-  "code": "ERROR_CODE",
+  "message": "Invalid request",
+  "error": "Bad Request",
+  "code": "INVALID_REQUEST",
   "path": "/api/v1/...",
-  "details": { "field": ["validation message"] },
+  "details": null,
   "meta": null
 }
 ```
 
-- `meta`: 선택 필드. 특정 에러 시 추가 정보 제공.
-
-#### Cooldown (`CHALLENGE_OTP_COOLDOWN_ACTIVE` 429)
-
-OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`):
-
-- **meta** 필드에 Cooldown 정보 포함
-- **Retry-After** HTTP 헤더 설정 (초 단위, 재요청 가능까지 남은 시간)
-
-**meta 구조**
-
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `availableAt` | string (ISO-8601) | 재요청 가능 시각 |
-| `retryAfterSeconds` | number | 재요청 가능까지 남은 초 |
-
-**에러 응답 예시**
-
-```json
-{
-  "timestamp": "2025-03-15T12:00:00.000Z",
-  "status": 429,
-  "message": "Please wait before requesting a new OTP",
-  "error": "Too Many Requests",
-  "code": "CHALLENGE_OTP_COOLDOWN_ACTIVE",
-  "path": "/api/v1/accounts/register/requests",
-  "details": null,
-  "meta": {
-    "availableAt": "2025-03-15T12:01:00.000Z",
-    "retryAfterSeconds": 60
-  }
-}
-```
-
-- 응답 헤더: `Retry-After: 60` (초 단위)
-
 ### 인증 불필요 (Public) 경로
 
-- `/api/v1/auth/**`
-- `/api/v1/accounts/policies/password`, `/api/v1/accounts/register`, `/api/v1/accounts/register/requests`, `/api/v1/accounts/register/confirmations`
-- `/api/v1/mails/verify`
+SecurityConfig 기준 공개 경로:
 
-나머지 `/api/v1/**` 는 JWT 인증 필요.
+- `/api/v1/auth/**`
+- `/api/v1/accounts/policies/password`
+- `/api/v1/accounts/register`
+- `/api/v1/accounts/register/requests`
+- `/api/v1/accounts/register/confirmations`
+- `/api/v1/mails/verify`
+- `/mail/**`
+- `/actuator/**`
+- `/v3/api-docs/**`
+- `/swagger-ui/**`, `/swagger-ui.html`
+
+그 외 `/api/v1/**`는 JWT 인증 필요.
 
 ---
 
@@ -116,7 +89,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ```json
 {
-  "email": "string (required)",
+  "email": "string (required, email)",
   "password": "string (required)"
 }
 ```
@@ -135,17 +108,21 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-- 성공 시 Refresh Token이 HTTP-only 쿠키로 설정됨.
-
 ### POST /api/v1/auth/refresh
 
-- Request Body 없음. 쿠키의 Refresh Token 사용.
-- Response: Login과 동일 (`accessToken`, `user`).
+- Request Body 없음 (Refresh 쿠키 사용)
+- Response (data): login과 동일 (`accessToken`, `user`)
 
 ### POST /api/v1/auth/logout
 
-- Request Body 없음. 쿠키의 Refresh Token으로 로그아웃 처리.
-- Response (data): `{ "success": true }`
+- Request Body 없음 (Refresh 쿠키 사용)
+- Response (data):
+
+```json
+{
+  "success": true
+}
+```
 
 ---
 
@@ -154,26 +131,21 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
 | GET | `/api/v1/accounts/policies/password` | Public | 비밀번호 정책 조회 |
-| POST | `/api/v1/accounts/register` | Public | 회원가입 (확인 토큰 필요) |
+| POST | `/api/v1/accounts/register` | Public | 회원가입 |
 | POST | `/api/v1/accounts/me/update/name` | JWT | 이름 변경 |
 | POST | `/api/v1/accounts/me/password` | JWT | 비밀번호 변경 |
 | POST | `/api/v1/accounts/me/withdraw` | JWT | 회원 탈퇴 |
 
 ### GET /api/v1/accounts/policies/password
 
-- Request Body 없음.
-- 회원가입/비밀번호 변경 시 프론트엔드 검증용 정책 정보 반환.
-
 **Response (data)**
 
 ```json
 {
-  "regex": "string (정규식)",
-  "message": "string (한글 안내 메시지)"
+  "regex": "string",
+  "message": "string"
 }
 ```
-
-- 예: `message` = "비밀번호는 12자 이상이며, 대문자·소문자·숫자·특수문자를 모두 포함해야 합니다."
 
 ### POST /api/v1/accounts/register
 
@@ -182,7 +154,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 ```json
 {
   "confirmationTokenId": "UUID (required)",
-  "password": "string (required, 12-64자, 강한 비밀번호)",
+  "password": "string (required, 12~64자, strong password)",
   "givenName": "string (required)",
   "familyName": "string (required)"
 }
@@ -209,7 +181,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-**Response (data)**: `null` 또는 빈 객체
+**Response (data)**: `null` (성공 객체 없음)
 
 ### POST /api/v1/accounts/me/password
 
@@ -219,11 +191,11 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 {
   "confirmationTokenId": "UUID (required)",
   "currentPassword": "string (required)",
-  "newPassword": "string (required, 12-64자)"
+  "newPassword": "string (required, 12~64자, strong password)"
 }
 ```
 
-**Response (data)**: `null` 또는 빈 객체
+**Response (data)**: `null`
 
 ### POST /api/v1/accounts/me/withdraw
 
@@ -236,40 +208,42 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-**Response (data)**: `null` 또는 빈 객체
+**Response (data)**: `null`
 
 ---
 
-## 4. Challenge (OTP / 확인)
+## 4. Challenge (OTP / 확인 토큰)
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
 | POST | `/api/v1/accounts/register/requests` | Public | 회원가입 OTP 요청 |
 | POST | `/api/v1/accounts/register/confirmations` | Public | 회원가입 OTP 확인 |
-| POST | `/api/v1/accounts/me/withdraw/requests` | JWT | 탈퇴 OTP 요청 |
-| POST | `/api/v1/accounts/me/withdraw/confirmations` | JWT | 탈퇴 OTP 확인 |
 | POST | `/api/v1/accounts/me/password/requests` | JWT | 비밀번호 변경 OTP 요청 |
 | POST | `/api/v1/accounts/me/password/confirmations` | JWT | 비밀번호 변경 OTP 확인 |
+| POST | `/api/v1/accounts/me/withdraw/requests` | JWT | 회원탈퇴 OTP 요청 |
+| POST | `/api/v1/accounts/me/withdraw/confirmations` | JWT | 회원탈퇴 OTP 확인 |
 
-### OTP 요청 (requests)
+### requests
 
-**Request Body**
+- register: body 필요
+- me/password, me/withdraw: body 없음 (JWT 사용자 이메일 사용)
 
-- `register/requests`: `{ "email": "string (required, email 형식)" }`
-- `me/withdraw/requests`, `me/password/requests`: Request Body 없음 (JWT로 이메일 식별)
+```json
+{
+  "email": "string (required, register 요청에서만)"
+}
+```
 
 **Response (data)**
 
 ```json
 {
   "challengeId": "UUID",
-  "expiresAt": "string (ISO-8601, OTP 만료 시각)"
+  "expiresAt": "ISO-8601"
 }
 ```
 
-- `CHALLENGE_OTP_COOLDOWN_ACTIVE` (429) 시: `meta` 필드에 `availableAt`, `retryAfterSeconds` 포함, `Retry-After` 헤더 설정.
-
-### OTP 확인 (confirmations)
+### confirmations
 
 **Request Body**
 
@@ -289,7 +263,18 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-- `confirmationTokenId`는 이후 register, password 변경, withdraw 시 사용.
+#### Cooldown (`CHALLENGE_OTP_COOLDOWN_ACTIVE`)
+
+OTP 재요청 쿨다운 시(HTTP 429), `meta`에 아래 정보 포함:
+
+```json
+{
+  "meta": {
+    "availableAt": "ISO-8601",
+    "retryAfterSeconds": 60
+  }
+}
+```
 
 ---
 
@@ -297,7 +282,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| GET | `/api/v1/workspaces` | JWT | 워크스페이스 목록 |
+| GET | `/api/v1/workspaces` | JWT | 내 워크스페이스 목록 |
 | POST | `/api/v1/workspaces` | JWT | 워크스페이스 생성 |
 | GET | `/api/v1/workspaces/{workspaceId}` | JWT | 워크스페이스 상세 |
 | POST | `/api/v1/workspaces/{workspaceId}/transfer-owner` | JWT | 소유권 이전 |
@@ -313,7 +298,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 ```json
 [
   {
-    "id": "string (UUID)",
+    "id": "UUID",
     "title": "string",
     "role": "OWNER | CREW"
   }
@@ -327,7 +312,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 ```json
 {
   "name": "string (required)",
-  "description": "string"
+  "description": "string (required, empty 허용)"
 }
 ```
 
@@ -335,17 +320,11 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ```json
 {
-  "id": "string (UUID)",
+  "id": "UUID",
   "name": "string",
   "description": "string"
 }
 ```
-
-### GET /api/v1/workspaces/{workspaceId}
-
-**Path Parameters**: `workspaceId` (UUID)
-
-**Response (data)**: Create와 동일
 
 ### POST /api/v1/workspaces/{workspaceId}/transfer-owner
 
@@ -357,7 +336,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-**Response (data)**: 워크스페이스 상세
+**Response (data)**: Workspace Detail
 
 ### DELETE /api/v1/workspaces/{workspaceId}
 
@@ -365,24 +344,22 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ```json
 {
-  "id": "string (UUID)"
+  "id": "UUID"
 }
 ```
 
 ### GET /api/v1/workspaces/{workspaceId}/members
 
-**Path Parameters**: `workspaceId` (UUID)
-
-**Response (data)**: 멤버 목록 (워크스페이스 멤버만 조회 가능)
+**Response (data)**
 
 ```json
 [
   {
-    "membershipId": "string (UUID)",
-    "accountId": "string (UUID)",
+    "membershipId": "UUID",
+    "accountId": "UUID",
     "name": "string",
     "role": "OWNER | CREW",
-    "joinedAt": "string (ISO 8601) | null"
+    "joinedAt": "ISO-8601 | null"
   }
 ]
 ```
@@ -394,7 +371,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 ```json
 {
   "accountId": "UUID (required)",
-  "role": "CREW | OWNER (default: CREW)"
+  "role": "OWNER | CREW (optional, default: CREW)"
 }
 ```
 
@@ -402,8 +379,8 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ```json
 {
-  "accountId": "string (UUID)",
-  "role": "string"
+  "accountId": "UUID",
+  "role": "OWNER | CREW"
 }
 ```
 
@@ -421,7 +398,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ```json
 {
-  "accountId": "string (UUID)",
+  "accountId": "UUID",
   "role": "REMOVED"
 }
 ```
@@ -430,15 +407,20 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ## 6. Task (태스크)
 
-모든 경로에 `workspaceId` (UUID) Path Parameter 필요.
-
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
 | POST | `/api/v1/workspaces/{workspaceId}/tasks` | JWT | 태스크 생성 |
-| GET | `/api/v1/workspaces/{workspaceId}/tasks` | JWT | 태스크 목록 (페이지네이션) |
-| GET | `/api/v1/workspaces/{workspaceId}/tasks/{id}` | JWT | 태스크 상세 |
+| GET | `/api/v1/workspaces/{workspaceId}/tasks` | JWT | 태스크 목록 조회(페이지) |
+| GET | `/api/v1/workspaces/{workspaceId}/tasks/{id}` | JWT | 태스크 상세 조회 |
 | PATCH | `/api/v1/workspaces/{workspaceId}/tasks/{id}` | JWT | 태스크 수정 |
 | DELETE | `/api/v1/workspaces/{workspaceId}/tasks/{id}` | JWT | 태스크 삭제 |
+
+### GET /api/v1/workspaces/{workspaceId}/tasks
+
+**Query**
+
+- `page` (기본 0)
+- `size` (기본 10)
 
 ### POST /api/v1/workspaces/{workspaceId}/tasks
 
@@ -448,37 +430,12 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 {
   "title": "string (required)",
   "description": "string (required)",
-  "assigneeId": "UUID (optional)",
-  "dueDate": "ISO-8601 (optional)"
-}
-```
-
-**Response (data)**: Task Information (아래 참조)
-
-### GET /api/v1/workspaces/{workspaceId}/tasks
-
-**Query Parameters**
-
-| name | type | default | 설명 |
-|------|------|---------|------|
-| page | int | 1 | 페이지 번호 (1-based) |
-| size | int | 10 | 페이지 크기 |
-
-**Response (data)**: 페이지네이션. 각 항목:
-
-```json
-{
-  "id": "UUID",
-  "title": "string",
-  "status": "TODO | IN_PROGRESS | DONE | CANCELLED",
-  "assignee": { "id": "UUID", "name": "string", "email": "string" } | null,
+  "assigneeId": "UUID | null",
   "dueDate": "ISO-8601 | null"
 }
 ```
 
-### GET /api/v1/workspaces/{workspaceId}/tasks/{id}
-
-**Response (data)**
+### GET /api/v1/workspaces/{workspaceId}/tasks/{id} 응답 예시 (data)
 
 ```json
 {
@@ -487,7 +444,11 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
   "description": "string",
   "status": "TODO | IN_PROGRESS | DONE | CANCELLED",
   "priority": "LOW | MEDIUM | HIGH | null",
-  "assignee": { "id": "UUID", "name": "string", "email": "string" } | null,
+  "assignee": {
+    "id": "UUID",
+    "name": "string",
+    "email": "string"
+  },
   "workspaceId": "UUID",
   "dueDate": "ISO-8601 | null"
 }
@@ -495,9 +456,14 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ### PATCH /api/v1/workspaces/{workspaceId}/tasks/{id}
 
-**Query Parameters**: `account` (UUID, required) — 실행자 계정 ID
+**Query Parameters**
 
-**Request Body** (부분 수정, 필드 생략 시 변경 없음, null 시 clear)
+- `account` (UUID, required)
+
+**Request Body (Patch semantics)**
+
+- 필드 생략: 변경 없음
+- nullable 필드에 `null` 명시: 값 clear
 
 ```json
 {
@@ -510,11 +476,11 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-**Response (data)**: Task Information
-
 ### DELETE /api/v1/workspaces/{workspaceId}/tasks/{id}
 
-**Query Parameters**: `account` (UUID, required)
+**Query Parameters**
+
+- `account` (UUID, required)
 
 **Response (data)**
 
@@ -528,22 +494,25 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ## 7. Project (프로젝트)
 
-모든 경로에 `workspaceId` (UUID) Path Parameter 필요.
-
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
 | POST | `/api/v1/workspaces/{workspaceId}/projects` | JWT | 프로젝트 생성 |
 | GET | `/api/v1/workspaces/{workspaceId}/projects/{projectId}` | JWT | 프로젝트 상세 |
 | PATCH | `/api/v1/workspaces/{workspaceId}/projects/{projectId}` | JWT | 프로젝트 수정 |
 | DELETE | `/api/v1/workspaces/{workspaceId}/projects/{projectId}` | JWT | 프로젝트 삭제 |
-| DELETE | `/api/v1/workspaces/{workspaceId}/projects/{projectId}/with-tasks` | JWT | 프로젝트 및 태스크 삭제 |
 | POST | `/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks` | JWT | 프로젝트 내 태스크 생성 |
 | GET | `/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks` | JWT | 프로젝트 내 태스크 목록 |
-| PATCH | `/api/v1/workspaces/{workspaceId}/projects/{fromProjectId}/tasks/{taskId}/move` | JWT | 태스크를 다른 프로젝트로 이동 |
+| PATCH | `/api/v1/workspaces/{workspaceId}/projects/{fromProjectId}/tasks/{taskId}/move` | JWT | 태스크 프로젝트 이동 |
+
+### 공통 Query Parameters
+
+- 아래 경로는 `account` (UUID, required) 필요:
+  - `PATCH /projects/{projectId}`
+  - `DELETE /projects/{projectId}`
+  - `POST /projects/{projectId}/tasks`
+  - `PATCH /projects/{fromProjectId}/tasks/{taskId}/move`
 
 ### POST /api/v1/workspaces/{workspaceId}/projects
-
-**Request Body**
 
 ```json
 {
@@ -551,54 +520,17 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-**Response (data)**
-
-```json
-{
-  "workspaceId": "UUID",
-  "projectId": "UUID",
-  "name": "string",
-  "progress": {
-    "totalCount": 0,
-    "completedCount": 0,
-    "progress": 0.0
-  }
-}
-```
-
-### GET /api/v1/workspaces/{workspaceId}/projects/{projectId}
-
-**Response (data)**: Create와 동일
-
 ### PATCH /api/v1/workspaces/{workspaceId}/projects/{projectId}
-
-**Request Body**
 
 ```json
 {
   "name": "string (optional)",
-  "addTaskIds": ["UUID"] (optional, default: []),
-  "removeTaskIds": ["UUID"] (optional, default: [])
+  "addTaskIds": ["UUID"],
+  "removeTaskIds": ["UUID"]
 }
 ```
-
-**Response (data)**: `null` (성공 메시지만)
 
 ### DELETE /api/v1/workspaces/{workspaceId}/projects/{projectId}
-
-**Query Parameters**: `account` (UUID, required)
-
-**Response (data)**
-
-```json
-{
-  "count": 1
-}
-```
-
-### DELETE /api/v1/workspaces/{workspaceId}/projects/{projectId}/with-tasks
-
-**Query Parameters**: `account` (UUID, required)
 
 **Response (data)**
 
@@ -611,41 +543,27 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ### POST /api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks
 
-**Request Body**
-
 ```json
 {
   "title": "string (required)",
   "description": "string (required)",
-  "assigneeId": "UUID (optional)",
-  "dueDate": "ISO-8601 (optional)"
-}
-```
-
-**Response (data)**: Task 정보
-
-### GET /api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks
-
-**Query Parameters**: `page`, `size` (페이지네이션, size default: 10)
-
-**Response (data)**: 페이지네이션. 각 항목:
-
-```json
-{
-  "id": "UUID",
-  "title": "string",
-  "status": "TODO | IN_PROGRESS | DONE | CANCELLED",
-  "assignee": { "id": "UUID", "name": "string", "email": "string" } | null,
+  "assigneeId": "UUID | null",
   "dueDate": "ISO-8601 | null"
 }
 ```
 
+### GET /api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks
+
+**Query**
+
+- `page` (기본 0)
+- `size` (기본 10)
+
+**Task 응답 필드**
+
+- `id`, `title`, `status`, `assignee`, `dueDate`, `isWithinSprintPeriod`
+
 ### PATCH /api/v1/workspaces/{workspaceId}/projects/{fromProjectId}/tasks/{taskId}/move
-
-**Path Parameters**: `fromProjectId`, `taskId`  
-**Query Parameters**: `account` (UUID, required)
-
-**Request Body**
 
 ```json
 {
@@ -653,81 +571,62 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-**Response (data)**: `null` (성공 메시지만)
-
 ---
 
 ## 8. Sprint (스프린트)
 
-모든 경로에 `workspaceId` (UUID) Path Parameter 필요.
-
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
+| GET | `/api/v1/workspaces/{workspaceId}/sprints` | JWT | 스프린트 목록 조회(페이지) |
 | POST | `/api/v1/workspaces/{workspaceId}/sprints` | JWT | 스프린트 생성 |
 | GET | `/api/v1/workspaces/{workspaceId}/sprints/{sprintId}` | JWT | 스프린트 상세 |
 | PATCH | `/api/v1/workspaces/{workspaceId}/sprints/{sprintId}` | JWT | 스프린트 수정 |
-| DELETE | `/api/v1/workspaces/{workspaceId}/sprints/{sprintId}/{userId}` | JWT | 스프린트 삭제 |
-| DELETE | `/api/v1/workspaces/{workspaceId}/sprints/{sprintId}/{userId}/with-tasks` | JWT | 스프린트 및 하위 삭제 |
+| DELETE | `/api/v1/workspaces/{workspaceId}/sprints/{sprintId}` | JWT | 스프린트 삭제 |
 | GET | `/api/v1/workspaces/{workspaceId}/sprints/{sprintId}/projects` | JWT | 스프린트 내 프로젝트 목록 |
 | POST | `/api/v1/workspaces/{workspaceId}/sprints/{sprintId}/projects` | JWT | 스프린트 내 프로젝트 생성 |
 
-### POST /api/v1/workspaces/{workspaceId}/sprints
+### GET /api/v1/workspaces/{workspaceId}/sprints
 
-**Request Body**
+**Query**
+
+- `page` (기본 0)
+- `size` (기본 10)
+
+### POST /api/v1/workspaces/{workspaceId}/sprints
 
 ```json
 {
   "name": "string (required)",
+  "goal": "string | null",
   "startDate": "ISO-8601 (required)",
   "endDate": "ISO-8601 (required)"
 }
 ```
 
-**Response (data)**
-
-```json
-{
-  "workspaceId": "UUID",
-  "sprintId": "UUID",
-  "name": "string",
-  "startDate": "ISO-8601",
-  "endDate": "ISO-8601"
-}
-```
-
-### GET /api/v1/workspaces/{workspaceId}/sprints/{sprintId}
-
-**Response (data)**: Create와 동일
-
 ### PATCH /api/v1/workspaces/{workspaceId}/sprints/{sprintId}
+
+**Query Parameters**
+
+- `account` (UUID, required)
 
 **Request Body**
 
 ```json
 {
   "name": "string (optional)",
+  "goal": "Patch<string> (optional)",
   "startDate": "ISO-8601 (optional)",
   "endDate": "ISO-8601 (optional)",
-  "addProjectIds": ["UUID"] (optional, default: []),
-  "removeProjectIds": ["UUID"] (optional, default: [])
+  "addProjectIds": ["UUID"],
+  "removeProjectIds": ["UUID"]
 }
 ```
 
-**Response (data)**: `null` (성공 메시지만)
+### DELETE /api/v1/workspaces/{workspaceId}/sprints/{sprintId}
 
-### DELETE /api/v1/workspaces/{workspaceId}/sprints/{sprintId}/{userId}
+**Query Parameters**
 
-**Path Parameters**: `sprintId`, `userId` (UUID)
-
-**Response (data)**
-
-```json
-{
-  "count": 1
-}
-```
-
-### DELETE /api/v1/workspaces/{workspaceId}/sprints/{sprintId}/{userId}/with-tasks
+- `account` (UUID, required)
 
 **Response (data)**
 
@@ -739,51 +638,17 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-### GET /api/v1/workspaces/{workspaceId}/sprints/{sprintId}/projects
-
-**Response (data)**
-
-```json
-[
-  {
-    "projectId": "UUID",
-    "name": "string",
-    "progress": {
-      "totalCount": 0,
-      "completedCount": 0,
-      "progress": 0.0
-    }
-  }
-]
-```
-
-### POST /api/v1/workspaces/{workspaceId}/sprints/{sprintId}/projects
-
-**Request Body**
-
-```json
-{
-  "name": "string (required)"
-}
-```
-
-**Response (data)**: 프로젝트 정보 (projectId, name, progress)
-
 ---
 
 ## 9. Analysis (AI 분석)
 
-**주의**: 경로가 `/api/v1/workspaces/{workspaceId}/...` 가 아닌 `/api/v1/{workspaceId}/analysis` 입니다.
+주의: 경로가 `/api/v1/workspaces/{workspaceId}/...`가 아니라 `/api/v1/{workspaceId}/analysis/...` 입니다.
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
 | POST | `/api/v1/{workspaceId}/analysis/request` | JWT | 스프린트 분석 요청 생성 |
 
 ### POST /api/v1/{workspaceId}/analysis/request
-
-**Path Parameters**: `workspaceId` (UUID)
-
-**Request Body**
 
 ```json
 {
@@ -793,7 +658,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-**Response (data)** — 201 Created
+**Response (data, 201 Created)**
 
 ```json
 {
@@ -809,18 +674,20 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| GET | `/api/v1/mails/verify` | Public | 메일 토큰 검증 (리다이렉트) |
+| GET | `/api/v1/mails/verify` | Public | 메일 토큰 검증 후 리다이렉트 |
 | GET | `/api/v1/mails/templates` | JWT | 메일 템플릿 목록 |
 | POST | `/api/v1/mails/send/workspaceinvite` | JWT | 워크스페이스 초대 메일 발송 |
 | POST | `/api/v1/mails/send/general` | JWT | 일반 메일 발송 |
 | POST | `/api/v1/mails/send/otp` | JWT | OTP 메일 발송 |
-| POST | `/api/v1/mails/send` | JWT | 메일 타입별 발송 |
+| POST | `/api/v1/mails/send` | JWT | mailType 기반 발송 |
 
 ### GET /api/v1/mails/verify
 
-**Query Parameters**: `token` (string)
+**Query Parameters**
 
-- 토큰 검증 후 302 리다이렉트.
+- `token` (required)
+
+성공/실패에 따라 설정된 URL로 `302 Found` 리다이렉트합니다.
 
 ### GET /api/v1/mails/templates
 
@@ -834,7 +701,7 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
     "description": "string",
     "actionType": "string | null",
     "tokenAuthEnabled": true,
-    "tokenExpireHours": 24 | null,
+    "tokenExpireHours": 24,
     "variables": [
       {
         "name": "string",
@@ -848,19 +715,51 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 
 ### POST /api/v1/mails/send/workspaceinvite
 
-**Request Body**
-
 ```json
 {
-  "to": "string (required, email)",
+  "to": "string (required)",
   "workspaceName": "string (required)",
-  "inviterName": "string (optional)",
-  "inviteLink": "string (optional)",
+  "inviterName": "string | null",
+  "inviteLink": "string | null",
   "workspaceId": "UUID (required)"
 }
 ```
 
-**Response (data)**
+### POST /api/v1/mails/send/general
+
+```json
+{
+  "to": "string (required)",
+  "subject": "string (required)",
+  "htmlContent": "string (required)",
+  "from": "string | null"
+}
+```
+
+### POST /api/v1/mails/send/otp
+
+```json
+{
+  "to": "string (required)",
+  "otpCode": "string (required)",
+  "otpPurpose": "string | null",
+  "expiresInMinutes": 5
+}
+```
+
+### POST /api/v1/mails/send
+
+```json
+{
+  "to": "string (required)",
+  "mailType": "OTP | WORKSPACE_INVITE | EMAIL_ALREADY_EXISTS",
+  "params": {
+    "key": "value"
+  }
+}
+```
+
+### Mail send 응답 (공통 data)
 
 ```json
 {
@@ -868,121 +767,43 @@ OTP 요청 쿨다운 중일 때 (예: `POST /api/v1/accounts/register/requests`)
 }
 ```
 
-### POST /api/v1/mails/send/general
-
-**Request Body**
-
-```json
-{
-  "to": "string (required)",
-  "subject": "string (required)",
-  "htmlContent": "string (required)",
-  "from": "string (optional)"
-}
-```
-
-**Response (data)**: `{ "status": "SUCCESS | FAILED" }`
-
-### POST /api/v1/mails/send/otp
-
-**Request Body**
-
-```json
-{
-  "to": "string (required)",
-  "otpCode": "string (required)",
-  "otpPurpose": "string (optional)",
-  "expiresInMinutes": 5
-}
-```
-
-**Response (data)**: `{ "status": "SUCCESS | FAILED" }`
-
-### POST /api/v1/mails/send
-
-**Request Body**
-
-```json
-{
-  "to": "string (required)",
-  "mailType": "string (required, MessageType enum 값)",
-  "params": { "key": "value" }
-}
-```
-
-**Response (data)**: `{ "status": "SUCCESS | FAILED" }`
-
 ---
 
-## 11. 타입 / Enum
+## 11. Enum
 
 ### Task Status
 
-| 값 | 설명 |
-|----|------|
-| TODO | 할 일 |
-| IN_PROGRESS | 진행 중 |
-| DONE | 완료 |
-| CANCELLED | 취소 |
+- `TODO`
+- `IN_PROGRESS`
+- `DONE`
+- `CANCELLED`
 
 ### Task Priority
 
-| 값 | 설명 |
-|----|------|
-| LOW | 낮음 |
-| MEDIUM | 중간 |
-| HIGH | 높음 |
+- `LOW`
+- `MEDIUM`
+- `HIGH`
 
 ### Workspace Role
 
-| 값 | 설명 |
-|----|------|
-| OWNER | 소유자 |
-| CREW | 멤버 |
+- `OWNER`
+- `CREW`
 
 ### MailSendStatus
 
-| 값 | 설명 |
-|----|------|
-| SUCCESS | 발송 성공 |
-| FAILED | 발송 실패 |
+- `SUCCESS`
+- `FAILED`
+
+### MessageType
+
+- `OTP`
+- `WORKSPACE_INVITE`
+- `EMAIL_ALREADY_EXISTS`
 
 ---
 
-## 12. 주의사항
+## 12. 참고 사항
 
-1. **account 쿼리 파라미터**: Task 삭제, Task 수정, Project 삭제, Project with-tasks 삭제, Task 이동 시 `account` (UUID) 쿼리 파라미터가 필요합니다. (TODO: 향후 `AuthenticationPrincipal`로 대체 예정)
-
-2. **Analysis 경로**: Analysis API는 `/api/v1/{workspaceId}/analysis` 형태로, `workspaces` 세그먼트가 없습니다.
-
-3. **Sprint 삭제**: `userId` Path Parameter가 필요합니다.
-
-4. **날짜 형식**: `Instant` 타입은 ISO-8601 형식 (예: `2025-03-14T12:00:00.000Z`).
-
-5. **Swagger UI**: 백엔드 실행 시 `/swagger-ui.html` 에서 API를 확인할 수 있습니다.
-
----
-
-## 13. 개발 예정 API
-
-아래 API는 백엔드 개발 예정이며, 현재 미구현 상태입니다.
-
-### 13.1 Project (프로젝트 목록)
-
-| Method | Path | Auth | 설명 |
-|--------|------|------|------|
-| GET | `/api/v1/workspaces/{workspaceId}/projects` | JWT | 워크스페이스 내 프로젝트 목록 조회 |
-
-### 13.2 Sprint (스프린트 목록)
-
-| Method | Path | Auth | 설명 |
-|--------|------|------|------|
-| GET | `/api/v1/workspaces/{workspaceId}/sprints` | JWT | 워크스페이스 내 스프린트 목록 조회 |
-
-### 13.3 Analysis (AI 분석 — 조회 API)
-
-| Method | Path | Auth | 설명 |
-|--------|------|------|------|
-| GET | `/api/v1/workspaces/{workspaceId}/analysis-requests` | JWT | 분석 요청 목록 조회 |
-| GET | `/api/v1/workspaces/{workspaceId}/analysis-requests/{requestId}` | JWT | 분석 요청 상세 조회 |
-| GET | `/api/v1/workspaces/{workspaceId}/analysis-reports/{reportId}` | JWT | 분석 리포트 조회 (또는 동등한 경로) |
+1. Task / Project / Sprint 일부 수정·삭제 API는 `account` 쿼리 파라미터(UUID)가 필요합니다.
+2. 날짜/시간 필드는 `Instant` 직렬화 기준 `ISO-8601` (`2026-03-16T00:00:00Z`) 형식입니다.
+3. Swagger 확인 경로: `/swagger-ui.html` (환경 설정에 따라 접근 제한 가능).
