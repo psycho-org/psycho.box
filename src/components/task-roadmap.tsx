@@ -77,6 +77,8 @@ export interface TaskRoadmapProps {
 const EDGE_THRESHOLD = 24;
 const EDGE_DWELL_MS = 450;
 const MAX_MONTH_COUNT = 12;
+const ROADMAP_ROW_HEIGHT = 56;
+const ROADMAP_SECTION_HEADER_HEIGHT = 37;
 
 export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEndDate }: TaskRoadmapProps) {
   const [monthOffset, setMonthOffset] = useState(0);
@@ -152,6 +154,11 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
   const totalDays = dateColumns.length;
 
   const dayWidth = 24;
+  const todayLineOffset = useMemo(() => {
+    const todayIndex = dateColumns.findIndex((col) => col.isToday);
+    if (todayIndex < 0) return null;
+    return todayIndex * dayWidth + dayWidth / 2;
+  }, [dateColumns, dayWidth]);
 
   const syncHorizontalScrollToHeader = useCallback(() => {
     if (isSyncingHScrollRef.current) return;
@@ -355,7 +362,7 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
               return (
                 <div
                   key={task.id}
-                  className={`flex items-start gap-2 px-3 py-2.5 min-h-[44px] ${alertType ? ALERT_BG[alertType] : ''}`}
+                  className={`flex h-[56px] items-start gap-2 overflow-hidden px-3 py-2.5 ${alertType ? ALERT_BG[alertType] : ''}`}
                 >
                   <span className="text-[11px] text-text-dim tabular-nums shrink-0 w-5">
                     {idx + 1}
@@ -387,7 +394,7 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
                   return (
                     <div
                       key={task.id}
-                      className={`flex items-start gap-2 px-3 py-2.5 min-h-[44px] bg-surface ${alertType ? ALERT_BG[alertType] : ''}`}
+                      className={`flex h-[56px] items-start gap-2 overflow-hidden px-3 py-2.5 bg-surface ${alertType ? ALERT_BG[alertType] : ''}`}
                     >
                       <span className="text-[11px] text-text-dim tabular-nums shrink-0 w-5">
                         {scheduledTasks.length + idx + 1}
@@ -421,8 +428,21 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
             >
               <div
                 className="relative shrink-0"
-                style={{ width: totalDays * dayWidth, minWidth: totalDays * dayWidth, minHeight: 44 * scheduledTasks.length }}
+                style={{
+                  width: totalDays * dayWidth,
+                  minWidth: totalDays * dayWidth,
+                  minHeight:
+                    ROADMAP_ROW_HEIGHT * (scheduledTasks.length + unscheduledTasks.length) +
+                    (unscheduledTasks.length > 0 ? ROADMAP_SECTION_HEADER_HEIGHT : 0),
+                }}
               >
+            {todayLineOffset !== null ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-0 z-20 -translate-x-1/2 border-l border-accent/25"
+                style={{ left: todayLineOffset }}
+              />
+            ) : null}
             {scheduledTasks.map((task, idx) => {
               const style = getBarStyle(task);
               const alertType = getTaskAlertType(task, sprintEndDate);
@@ -435,7 +455,7 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
               return (
                 <div
                   key={task.id}
-                  className="flex items-center border-b border-line min-h-[44px] relative"
+                  className="relative flex h-[56px] items-center border-b border-line"
                 >
                   {style && (
                     <div
@@ -449,6 +469,21 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
                     />
                   )}
                 </div>
+              );
+            })}
+            {unscheduledTasks.length > 0 ? (
+              <div
+                className="border-t-2 border-b border-line bg-surface"
+                style={{ height: ROADMAP_SECTION_HEADER_HEIGHT }}
+              />
+            ) : null}
+            {unscheduledTasks.map((task) => {
+              const alertType = getTaskAlertType(task, sprintEndDate);
+              return (
+                <div
+                  key={task.id}
+                  className={`relative flex h-[56px] items-center border-b border-line ${alertType ? ALERT_BG[alertType] : ''}`}
+                />
               );
             })}
               </div>

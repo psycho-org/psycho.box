@@ -6,6 +6,7 @@ import { WorkspaceSwitcher } from '@/components/workspace-switcher';
 import { UserMenu } from '@/components/user-menu';
 import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { CreateWorkspaceModal } from '@/components/create-workspace-modal';
+import { useAuth } from '@/components/auth-provider';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
@@ -46,11 +47,20 @@ function XIcon({ className }: { className?: string }) {
 }
 
 export default function WorkspacesPage() {
+  const { setUser: setAuthUser } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    apiRequest<{ user?: { id: string; email?: string; firstName?: string; lastName?: string } }>('/api/real/auth/me').then(
+      (result) => {
+        if (result.ok && result.data?.user) setAuthUser(result.data.user);
+      },
+    );
+  }, [setAuthUser]);
 
   function loadWorkspaces() {
     setLoading(true);
@@ -63,6 +73,11 @@ export default function WorkspacesPage() {
         }
         const raw = result.data;
         setWorkspaces(Array.isArray(raw) ? raw.map((item) => toWorkspace(item)) : []);
+        apiRequest<{ user?: { id: string; email?: string; firstName?: string; lastName?: string } }>('/api/real/auth/me').then(
+          (auth) => {
+            if (auth.ok && auth.data?.user) setAuthUser(auth.data.user);
+          },
+        );
       })
       .catch(() => setError(getErrorMessage({ status: 500 })))
       .finally(() => setLoading(false));

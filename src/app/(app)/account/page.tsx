@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/components/auth-provider';
 import { UserMenu } from '@/components/user-menu';
 import { Button } from '@/components/ui/button';
+import { OtpInput } from '@/components/ui/otp-input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
+import { DEFAULT_PASSWORD_MESSAGE, getPasswordPolicyRegex } from '@/lib/password-policy';
 
 interface User {
   id: string;
@@ -34,6 +38,10 @@ function ArrowLeftIcon({ className }: { className?: string }) {
 }
 
 export default function AccountPage() {
+  const { user: authUser, setUser: setAuthUser } = useAuth();
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/54d72956-08dc-43e8-b578-f219e74b41b2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'account/page.tsx:mount',message:'AccountPage mount',data:{hasAuthUser:!!authUser,path:typeof window!=='undefined'?window.location.pathname:'ssr'},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [givenName, setGivenName] = useState('');
@@ -51,16 +59,44 @@ export default function AccountPage() {
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
   const [pwLoading, setPwLoading] = useState(false);
+  const [passwordPolicy, setPasswordPolicy] = useState<{ regex: string; message: string } | null>(null);
+
+  const passwordRegex = getPasswordPolicyRegex(passwordPolicy?.regex);
+  const passwordMessage = passwordPolicy?.message ?? DEFAULT_PASSWORD_MESSAGE;
+
+  function resetPasswordChangeFlow() {
+    setPwSuccess(false);
+    setPwError(null);
+    setPwStep('idle');
+    setChallengeId('');
+    setOtpCode('');
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmationTokenId('');
+  }
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/54d72956-08dc-43e8-b578-f219e74b41b2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'account/page.tsx:useEffect',message:'AccountPage fetch started',data:{},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
     apiRequest<{ user?: User }>('/api/real/auth/me').then((result) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/54d72956-08dc-43e8-b578-f219e74b41b2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'account/page.tsx:fetchResult',message:'AccountPage fetch result',data:{ok:result.ok,hasUser:!!result.data?.user,status:result.status},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
       if (result.ok && result.data?.user) {
         const u = result.data.user;
         setUser(u);
         setGivenName((u.firstName ?? '').trim());
         setFamilyName((u.lastName ?? '').trim());
+        setAuthUser(u);
       }
       setLoading(false);
+    });
+
+    apiRequest<{ regex: string; message: string }>('/api/real/accounts/policies/password').then((result) => {
+      if (result.ok && result.data) {
+        setPasswordPolicy(result.data);
+      }
     });
   }, []);
 
@@ -82,12 +118,20 @@ export default function AccountPage() {
 
     if (result.ok) {
       setNameSuccess(true);
+      if (authUser) {
+        setAuthUser({
+          ...authUser,
+          firstName: givenName.trim(),
+          lastName: familyName.trim(),
+        });
+      }
     } else {
       setNameError(getErrorMessage({ code: result.code, message: result.message, status: result.status }));
     }
   }
 
   async function handlePwRequest() {
+    setPwSuccess(false);
     setPwError(null);
     setPwLoading(true);
     const result = await apiRequest<{ challengeId?: string }>(
@@ -152,7 +196,8 @@ export default function AccountPage() {
 
     if (result.ok) {
       setPwSuccess(true);
-      setPwStep('idle');
+      setPwStep('submit');
+      setChallengeId('');
       setOtpCode('');
       setCurrentPassword('');
       setNewPassword('');
@@ -255,7 +300,7 @@ export default function AccountPage() {
           {/* 비밀번호 변경 */}
           <section className="rounded-xl border border-line bg-surface p-6">
             <h2 className="text-base font-semibold mb-4">비밀번호 변경</h2>
-            {pwStep === 'idle' && (
+            {!pwSuccess && pwStep === 'idle' && (
               <>
                 <p className="text-[13px] text-text-soft mb-4">
                   비밀번호를 변경하려면 이메일로 OTP를 요청한 뒤, OTP 확인 후 새 비밀번호를 입력해 주세요.
@@ -265,25 +310,21 @@ export default function AccountPage() {
                 </Button>
               </>
             )}
-            {pwStep === 'otp' && (
+            {!pwSuccess && pwStep === 'otp' && (
               <form onSubmit={handlePwOtpSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="otpCode" className="block text-[13px] font-medium mb-1.5">
+                <div className="grid gap-1.5 place-items-center">
+                  <label className="block text-[13px] font-medium mb-1.5">
                     이메일로 전송된 OTP 6자리
                   </label>
-                  <input
-                    id="otpCode"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
+                  <OtpInput
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="000000"
-                    className="w-full px-3 py-2.5 rounded-lg border border-line bg-bg text-[13px] focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                    onChange={(v) => setOtpCode(v.replace(/\D/g, '').slice(0, 6))}
+                    autoFocus
                     disabled={pwLoading}
+                    className="mt-1"
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex justify-center gap-2">
                   <Button type="submit" loading={pwLoading} disabled={pwLoading}>
                     확인
                   </Button>
@@ -301,34 +342,26 @@ export default function AccountPage() {
                 </div>
               </form>
             )}
-            {pwStep === 'submit' && (
+            {!pwSuccess && pwStep === 'submit' && (
               <form onSubmit={handlePwSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="currentPassword" className="block text-[13px] font-medium mb-1.5">
-                    현재 비밀번호
-                  </label>
-                  <input
-                    id="currentPassword"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-line bg-bg text-[13px] focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-                    disabled={pwLoading}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="newPassword" className="block text-[13px] font-medium mb-1.5">
-                    새 비밀번호
-                  </label>
-                  <input
-                    id="newPassword"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-line bg-bg text-[13px] focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-                    disabled={pwLoading}
-                  />
-                </div>
+                <PasswordInput
+                  id="currentPassword"
+                  label="현재 비밀번호"
+                  value={currentPassword}
+                  onChange={setCurrentPassword}
+                  disabled={pwLoading}
+                />
+                <PasswordInput
+                  id="newPassword"
+                  label="새 비밀번호"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  disabled={pwLoading}
+                  minLength={12}
+                  maxLength={64}
+                  helperText={passwordMessage}
+                  validateWith={passwordRegex}
+                />
                 <div className="flex gap-2">
                   <Button type="submit" loading={pwLoading} disabled={pwLoading}>
                     비밀번호 변경
@@ -349,7 +382,14 @@ export default function AccountPage() {
               </form>
             )}
             {pwError && <p className="mt-4 text-[13px] text-red">{pwError}</p>}
-            {pwSuccess && <p className="mt-4 text-[13px] text-green">비밀번호가 변경되었습니다.</p>}
+            {pwSuccess && (
+              <div className="space-y-4">
+                <p className="text-[13px] text-green">비밀번호가 변경되었습니다.</p>
+                <Button type="button" variant="secondary" onClick={resetPasswordChangeFlow}>
+                  다시 변경하기
+                </Button>
+              </div>
+            )}
           </section>
         </div>
       </div>

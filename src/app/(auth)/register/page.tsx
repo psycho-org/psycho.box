@@ -3,14 +3,12 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { AuthCard } from '@/components/auth-card';
-import { Button, CooldownCountdown, OtpInput } from '@/components/ui';
+import { Button, CooldownCountdown, OtpInput, PasswordInput } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
+import { DEFAULT_PASSWORD_MESSAGE, getPasswordPolicyRegex } from '@/lib/password-policy';
 
 type Step = 1 | 2 | 3;
-
-const DEFAULT_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,64}$/;
-const DEFAULT_PASSWORD_MESSAGE = '12-64자, 대소문자·숫자·특수문자 포함';
 
 export default function RegisterPage() {
   const [step, setStep] = useState<Step>(1);
@@ -24,7 +22,6 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [cooldownAvailableAt, setCooldownAvailableAt] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const [passwordPolicy, setPasswordPolicy] = useState<{ regex: string; message: string } | null>(null);
 
@@ -34,18 +31,8 @@ export default function RegisterPage() {
     );
   }, []);
 
-  const passwordRegex =
-    passwordPolicy?.regex != null
-      ? (() => {
-          try {
-            return new RegExp(passwordPolicy.regex);
-          } catch {
-            return DEFAULT_PASSWORD_REGEX;
-          }
-        })()
-      : DEFAULT_PASSWORD_REGEX;
+  const passwordRegex = getPasswordPolicyRegex(passwordPolicy?.regex);
   const passwordMessage = passwordPolicy?.message ?? DEFAULT_PASSWORD_MESSAGE;
-  const passwordValid = passwordRegex.test(password);
 
   async function handleOtpRequest(event: FormEvent) {
     event.preventDefault();
@@ -301,60 +288,16 @@ export default function RegisterPage() {
               aria-readonly
             />
           </label>
-          <label className="grid gap-1.5 text-[13px] text-text-soft">
-            비밀번호
-            <span className="relative flex">
-              <input
-                className="w-full border border-line rounded-[10px] bg-surface-2 text-text py-2.5 px-3 pr-20 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={12}
-                maxLength={64}
-                required
-              />
-              {password.length > 0 && (
-                <span
-                  className="absolute right-10 top-1/2 -translate-y-1/2 flex items-center"
-                  title={passwordValid ? '규칙에 맞습니다' : passwordMessage}
-                  aria-hidden
-                >
-                  {passwordValid ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
-                      <path d="M20 6L9 17l-5-5" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  )}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-dim hover:text-text-soft"
-                title={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-                aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-              >
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                )}
-              </button>
-            </span>
-            <span className="text-[11px] text-text-dim mt-0.5">
-              {passwordMessage}
-            </span>
-          </label>
+          <PasswordInput
+            label="비밀번호"
+            value={password}
+            onChange={setPassword}
+            minLength={12}
+            maxLength={64}
+            required
+            helperText={passwordMessage}
+            validateWith={passwordRegex}
+          />
           <label className="grid gap-1.5 text-[13px] text-text-soft">
             이름
             <input

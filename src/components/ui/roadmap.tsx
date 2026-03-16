@@ -40,6 +40,8 @@ export function Roadmap({
     return dates;
   }, [startDate, weekCount]);
 
+  const todayKey = useMemo(() => formatDate(new Date()), []);
+
   const handleDragOver = useCallback((e: React.DragEvent, cellKey: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -105,11 +107,17 @@ export function Roadmap({
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, key)}
               className={`
-                min-h-[100px] p-2 border-r border-line last:border-r-0
+                relative min-h-[100px] p-2 border-r border-line last:border-r-0
                 transition-colors
                 ${dragOverCell === key ? 'bg-accent-dim ring-1 ring-accent' : 'bg-surface-2/30 hover:bg-surface-2/50'}
               `}
             >
+              {key === todayKey ? (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 border-l border-accent/30"
+                />
+              ) : null}
               <span className="text-[10px] text-text-dim block mb-1">{date.getDate()}</span>
               {dragOverCell === key ? (
                 <span className="text-[10px] text-accent-soft">여기에 놓기</span>

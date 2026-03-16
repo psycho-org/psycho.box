@@ -7,6 +7,9 @@ export type { CooldownCountdownProps } from './cooldown-countdown';
 export { OtpInput } from './otp-input';
 export type { OtpInputProps } from './otp-input';
 
+export { PasswordInput } from './password-input';
+export type { PasswordInputProps } from './password-input';
+
 export { StatusPill } from './status-pill';
 export type { StatusPillProps, StatusPillValue } from './status-pill';
 

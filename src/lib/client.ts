@@ -15,18 +15,82 @@ export interface ApiResult<T> {
   meta?: ErrorMetaCooldown | null;
 }
 
-export async function apiRequest<T>(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<ApiResult<T>> {
-  const response = await fetch(input, {
+let refreshInFlight: Promise<boolean> | null = null;
+
+function getPathname(input: RequestInfo | URL): string | null {
+  if (typeof input === 'string') {
+    if (input.startsWith('/')) return input;
+    try {
+      return new URL(input).pathname;
+    } catch {
+      return null;
+    }
+  }
+
+  if (input instanceof URL) {
+    return input.pathname;
+  }
+
+  if (typeof Request !== 'undefined' && input instanceof Request) {
+    try {
+      return new URL(input.url).pathname;
+    } catch {
+      return input.url.startsWith('/') ? input.url : null;
+    }
+  }
+
+  return null;
+}
+
+function shouldAttemptRefresh(input: RequestInfo | URL): boolean {
+  const pathname = getPathname(input);
+  if (!pathname?.startsWith('/api/real/')) return false;
+
+  return ![
+    '/api/real/auth/login',
+    '/api/real/auth/logout',
+    '/api/real/auth/refresh',
+    '/api/real/auth/me',
+  ].includes(pathname);
+}
+
+async function performRequest(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetch(input, {
     ...init,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
   });
+}
 
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      const response = await performRequest('/api/real/auth/refresh', { method: 'POST' });
+      return response.ok;
+    })().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+
+  return refreshInFlight;
+}
+
+async function handleAuthFailure() {
+  try {
+    await performRequest('/api/real/auth/logout', { method: 'POST' });
+  } catch {
+    // Ignore cleanup failure and continue to login redirect.
+  }
+
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.assign('/login');
+  }
+}
+
+async function toApiResult<T>(response: Response): Promise<ApiResult<T>> {
   const payload = await response.json().catch(() => null);
 
   if (response.ok) {
@@ -49,4 +113,28 @@ export async function apiRequest<T>(
     code: payload?.code ?? null,
     meta: meta ?? undefined,
   };
+}
+
+export async function apiRequest<T>(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<ApiResult<T>> {
+  let response = await performRequest(input, init);
+
+  if (response.status === 401 && shouldAttemptRefresh(input)) {
+    const refreshSucceeded = await refreshAccessToken();
+
+    if (refreshSucceeded) {
+      response = await performRequest(input, init);
+    } else {
+      await handleAuthFailure();
+      return toApiResult<T>(response);
+    }
+
+    if (response.status === 401) {
+      await handleAuthFailure();
+    }
+  }
+
+  return toApiResult<T>(response);
 }
