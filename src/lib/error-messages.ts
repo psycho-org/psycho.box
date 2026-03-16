@@ -54,6 +54,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   DESCRIPTION_NOT_VALID: '설명이 올바르지 않습니다.',
   TASK_INFO_NOT_FOUND: '작업 정보를 찾을 수 없습니다.',
   INVALID_TRANSITION: '잘못된 상태 변경입니다.',
+  INVALID_DATE_RANGE: '허용된 일정 범위를 벗어난 날짜입니다.',
   INVALID_REQUEST: '잘못된 요청입니다.',
 
   // Workspace

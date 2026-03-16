@@ -106,6 +106,14 @@ async function toApiResult<T>(response: Response): Promise<ApiResult<T>> {
       ? (payload as { meta?: ErrorMetaCooldown }).meta ?? null
       : null;
 
+  if (typeof window !== 'undefined') {
+    console.warn('[apiRequest] request failed', {
+      status: response.status,
+      url: response.url,
+      payload,
+    });
+  }
+
   return {
     ok: false,
     status: response.status,

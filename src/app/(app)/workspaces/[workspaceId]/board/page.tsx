@@ -10,6 +10,7 @@ import { TaskCreateModal } from '@/components/task-create-modal';
 import { TaskRoadmap } from '@/components/task-roadmap';
 import { apiRequest } from '@/lib/client';
 import { USER_ID_COOKIE } from '@/lib/constants';
+import { getErrorMessage } from '@/lib/error-messages';
 import type { TaskStatus } from '@/lib/task-status';
 import { TASK_STATUS_COLORS } from '@/lib/task-status';
 
@@ -173,6 +174,8 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const [selectedAssignee, setSelectedAssignee] = useState<AssigneeFilterKey | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
 
   useEffect(() => {
     setCurrentUserId(getCurrentUserId());
@@ -242,6 +245,124 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   function openCreateModal(status: TaskStatus) {
     setCreateModalStatus(status);
     setCreateModalOpen(true);
+  }
+
+  function toTodoCardTask(task: Task) {
+    return {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      dueDate: task.dueDate,
+      assignee: task.assignee
+        ? {
+            id: task.assignee.id,
+            name: task.assignee.name ?? task.assignee.email ?? '알 수 없음',
+          }
+        : null,
+    };
+  }
+
+  function handleTaskDragStart(event: React.DragEvent<HTMLDivElement>, taskId: string) {
+    setDraggingTaskId(taskId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', taskId);
+    event.currentTarget.classList.add('opacity-60');
+  }
+
+  function handleTaskDragEnd(event: React.DragEvent<HTMLDivElement>) {
+    event.currentTarget.classList.remove('opacity-60');
+    setDraggingTaskId(null);
+    setDragOverStatus(null);
+  }
+
+  function handleColumnDragOver(event: React.DragEvent<HTMLDivElement>, status: TaskStatus) {
+    if (!draggingTaskId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDragOverStatus(status);
+  }
+
+  async function moveTaskStatus(taskId: string, targetStatus: TaskStatus) {
+    const current = tasks.find((task) => task.id === taskId);
+    if (!current || current.status === targetStatus) return;
+
+    const previousStatus = current.status;
+    setTasks((prev) =>
+      prev.map((task) => (task.id === taskId ? { ...task, status: targetStatus } : task)),
+    );
+    setError(null);
+
+    const result = await apiRequest(
+      `/api/real/workspaces/${workspaceId}/tasks/${taskId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status: targetStatus }),
+      },
+    );
+
+    if (!result.ok) {
+      setTasks((prev) =>
+        prev.map((task) => (task.id === taskId ? { ...task, status: previousStatus } : task)),
+      );
+      setError(
+        getErrorMessage({
+          code: result.code,
+          message: result.message,
+          status: result.status,
+        }),
+      );
+      return;
+    }
+
+    setError(null);
+  }
+
+  async function moveTaskDueDate(taskId: string, dueDate: string) {
+    const current = tasks.find((task) => task.id === taskId);
+    if (!current) return;
+
+    const previousDueDate = current.dueDate ?? null;
+    const previousDueDateKey = previousDueDate ? previousDueDate.slice(0, 10) : null;
+    if (previousDueDateKey === dueDate) return;
+
+    const nextDueDate = `${dueDate}T23:59:59.000Z`;
+    setTasks((prev) =>
+      prev.map((task) => (task.id === taskId ? { ...task, dueDate: nextDueDate } : task)),
+    );
+    setError(null);
+
+    const result = await apiRequest(
+      `/api/real/workspaces/${workspaceId}/tasks/${taskId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ dueDate: nextDueDate }),
+      },
+    );
+
+    if (!result.ok) {
+      setTasks((prev) =>
+        prev.map((task) => (task.id === taskId ? { ...task, dueDate: previousDueDate } : task)),
+      );
+      setError(
+        getErrorMessage({
+          code: result.code,
+          message: result.message,
+          status: result.status,
+        }),
+      );
+    }
+  }
+
+  async function handleColumnDrop(event: React.DragEvent<HTMLDivElement>, targetStatus: TaskStatus) {
+    event.preventDefault();
+    const taskIdFromData = event.dataTransfer.getData('text/plain');
+    const taskId = draggingTaskId ?? taskIdFromData;
+
+    setDraggingTaskId(null);
+    setDragOverStatus(null);
+
+    if (!taskId) return;
+    await moveTaskStatus(taskId, targetStatus);
   }
 
   function loadTasks() {
@@ -370,13 +491,9 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
           <p className="text-red text-[13px]">{error}</p>
         ) : display === 'card' && view !== 'roadmap' ? (
           <TodoCardList
-            tasks={(view === 'my' ? myTasks : view === 'assignee' ? filteredTasks : tasks).map((t) => ({
-              id: t.id,
-              title: t.title,
-              status: t.status,
-              dueDate: t.dueDate,
-              assignee: t.assignee ? { id: t.assignee.id, name: t.assignee.name ?? t.assignee.email ?? '알 수 없음' } : null,
-            }))}
+            tasks={(view === 'my' ? myTasks : view === 'assignee' ? filteredTasks : tasks).map((t) =>
+              toTodoCardTask(t),
+            )}
             sprintEndDate={sprintEndDate}
             columns={3}
             emptyMessage="태스크가 없습니다."
@@ -438,7 +555,12 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
           />
         ) : view === 'roadmap' ? (
           <div className="min-w-0">
-            <TaskRoadmap tasks={roadmapTasks} monthCount={2} sprintEndDate={sprintEndDate} />
+            <TaskRoadmap
+              tasks={roadmapTasks}
+              monthCount={2}
+              sprintEndDate={sprintEndDate}
+              onTaskDueDateChange={moveTaskDueDate}
+            />
           </div>
         ) : view === 'assignee' ? (
           <div className="flex gap-4">
@@ -536,19 +658,27 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                           <PlusIcon className="size-4" />
                         </button>
                       </div>
-                      <div className="flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px]">
+                      <div
+                        className={`flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px] transition-colors ${
+                          dragOverStatus === status ? 'bg-accent-dim/30' : ''
+                        }`}
+                        onDragOver={(event) => handleColumnDragOver(event, status)}
+                        onDrop={(event) => {
+                          void handleColumnDrop(event, status);
+                        }}
+                      >
                         {items.map((task) => (
-                          <TodoCard
+                          <div
                             key={task.id}
-                            task={{
-                              id: task.id,
-                              title: task.title,
-                              status: task.status,
-                              dueDate: task.dueDate,
-                              assignee: task.assignee ? { id: task.assignee.id, name: task.assignee.name ?? task.assignee.email ?? '알 수 없음' } : null,
-                            }}
-                            sprintEndDate={sprintEndDate}
-                          />
+                            draggable
+                            onDragStart={(event) => handleTaskDragStart(event, task.id)}
+                            onDragEnd={handleTaskDragEnd}
+                            className={`cursor-grab active:cursor-grabbing ${
+                              draggingTaskId === task.id ? 'opacity-60' : ''
+                            }`}
+                          >
+                            <TodoCard task={toTodoCardTask(task)} sprintEndDate={sprintEndDate} />
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -598,19 +728,27 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                     </div>
                   </div>
                   {/* 카드 목록 */}
-                  <div className="flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px]">
+                  <div
+                    className={`flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px] transition-colors ${
+                      dragOverStatus === status ? 'bg-accent-dim/30' : ''
+                    }`}
+                    onDragOver={(event) => handleColumnDragOver(event, status)}
+                    onDrop={(event) => {
+                      void handleColumnDrop(event, status);
+                    }}
+                  >
                     {items.map((task) => (
-                      <TodoCard
+                      <div
                         key={task.id}
-                        task={{
-                          id: task.id,
-                          title: task.title,
-                          status: task.status,
-                          dueDate: task.dueDate,
-                          assignee: task.assignee ? { id: task.assignee.id, name: task.assignee.name ?? task.assignee.email ?? '알 수 없음' } : null,
-                        }}
-                        sprintEndDate={sprintEndDate}
-                      />
+                        draggable
+                        onDragStart={(event) => handleTaskDragStart(event, task.id)}
+                        onDragEnd={handleTaskDragEnd}
+                        className={`cursor-grab active:cursor-grabbing ${
+                          draggingTaskId === task.id ? 'opacity-60' : ''
+                        }`}
+                      >
+                        <TodoCard task={toTodoCardTask(task)} sprintEndDate={sprintEndDate} />
+                      </div>
                     ))}
                   </div>
                 </div>

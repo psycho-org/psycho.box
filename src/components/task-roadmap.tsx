@@ -26,7 +26,10 @@ function parseTagsFromTitle(title: string): { tags: string[]; displayTitle: stri
 }
 
 function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function parseDateStr(s: string): Date {
@@ -72,6 +75,8 @@ export interface TaskRoadmapProps {
   monthCount?: number;
   /** 스프린트 종료일 (빨간색 표시용) */
   sprintEndDate?: string | null;
+  /** 로드맵에서 날짜 이동 시 호출 (YYYY-MM-DD) */
+  onTaskDueDateChange?: (taskId: string, dueDate: string) => Promise<void> | void;
 }
 
 const EDGE_THRESHOLD = 24;
@@ -80,9 +85,38 @@ const MAX_MONTH_COUNT = 12;
 const ROADMAP_ROW_HEIGHT = 56;
 const ROADMAP_SECTION_HEADER_HEIGHT = 37;
 
-export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEndDate }: TaskRoadmapProps) {
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+export function TaskRoadmap({
+  tasks,
+  monthCount: initialMonthCount = 2,
+  sprintEndDate,
+  onTaskDueDateChange,
+}: TaskRoadmapProps) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [monthCount, setMonthCount] = useState(initialMonthCount);
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<{ rowTaskId: string; dateKey: string } | null>(null);
+  const [unscheduledHover, setUnscheduledHover] = useState<{
+    taskId: string;
+    dateKey: string;
+  } | null>(null);
+  const [addingDueDateTaskId, setAddingDueDateTaskId] = useState<string | null>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const pendingPrependWidthRef = useRef<number>(0);
@@ -272,6 +306,95 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
     return { left, width };
   }
 
+  function getDateKeyFromPointer(clientX: number, currentTarget: HTMLDivElement): string | null {
+    if (dateColumns.length === 0) return null;
+    const rect = currentTarget.getBoundingClientRect();
+    const localX = clientX - rect.left;
+    const clampedX = Math.min(Math.max(localX, 0), totalDays * dayWidth - 1);
+    const dayIndex = Math.floor(clampedX / dayWidth);
+    return dateColumns[dayIndex]?.key ?? null;
+  }
+
+  function handleTimelineBarDragStart(event: React.DragEvent<HTMLDivElement>, taskId: string) {
+    if (!onTaskDueDateChange) return;
+    setDraggingTaskId(taskId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', taskId);
+  }
+
+  function handleTimelineBarDragEnd() {
+    setDraggingTaskId(null);
+    setDragOver(null);
+  }
+
+  function handleTimelineRowDragOver(event: React.DragEvent<HTMLDivElement>, rowTaskId: string) {
+    if (!onTaskDueDateChange) return;
+    const taskId = draggingTaskId || event.dataTransfer.getData('text/plain');
+    if (!taskId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const dateKey = getDateKeyFromPointer(event.clientX, event.currentTarget);
+    if (!dateKey) return;
+    setDragOver({ rowTaskId, dateKey });
+  }
+
+  function handleTimelineRowDragLeave(event: React.DragEvent<HTMLDivElement>, rowTaskId: string) {
+    const next = event.relatedTarget as Node | null;
+    if (next && event.currentTarget.contains(next)) return;
+    setDragOver((prev) => (prev?.rowTaskId === rowTaskId ? null : prev));
+  }
+
+  async function handleTimelineRowDrop(event: React.DragEvent<HTMLDivElement>, rowTaskId: string) {
+    if (!onTaskDueDateChange) return;
+    event.preventDefault();
+
+    const taskId = draggingTaskId || event.dataTransfer.getData('text/plain');
+    const dateKey =
+      getDateKeyFromPointer(event.clientX, event.currentTarget) ??
+      (dragOver?.rowTaskId === rowTaskId ? dragOver.dateKey : null);
+
+    setDraggingTaskId(null);
+    setDragOver(null);
+
+    if (!taskId || !dateKey) return;
+    await onTaskDueDateChange(taskId, dateKey);
+  }
+
+  function handleUnscheduledRowMouseMove(
+    event: React.MouseEvent<HTMLDivElement>,
+    taskId: string,
+  ) {
+    if (!onTaskDueDateChange) return;
+    if (addingDueDateTaskId) return;
+    const dateKey = getDateKeyFromPointer(event.clientX, event.currentTarget);
+    if (!dateKey) return;
+    setUnscheduledHover((prev) => {
+      if (prev?.taskId === taskId && prev.dateKey === dateKey) return prev;
+      return { taskId, dateKey };
+    });
+  }
+
+  function handleUnscheduledRowMouseLeave(taskId: string) {
+    setUnscheduledHover((prev) => (prev?.taskId === taskId ? null : prev));
+  }
+
+  async function handleAddDueDate(
+    event: React.MouseEvent<HTMLButtonElement>,
+    taskId: string,
+    dateKey: string,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!onTaskDueDateChange) return;
+    setAddingDueDateTaskId(taskId);
+    try {
+      await onTaskDueDateChange(taskId, dateKey);
+      setUnscheduledHover((prev) => (prev?.taskId === taskId ? null : prev));
+    } finally {
+      setAddingDueDateTaskId((prev) => (prev === taskId ? null : prev));
+    }
+  }
+
   return (
     <div className="flex flex-col h-[480px] min-h-0 rounded-2xl border border-line/60 bg-surface overflow-hidden">
       {/* 월 네비게이션 */}
@@ -446,6 +569,11 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
             {scheduledTasks.map((task, idx) => {
               const style = getBarStyle(task);
               const alertType = getTaskAlertType(task, sprintEndDate);
+              const dragOverDayIndex =
+                dragOver?.rowTaskId === task.id
+                  ? dateColumns.findIndex((col) => col.key === dragOver.dateKey)
+                  : -1;
+              const dragOverLeft = dragOverDayIndex >= 0 ? dragOverDayIndex * dayWidth : null;
               const barColor =
                 alertType === 'overdue'
                   ? ALERT_BAR_COLOR['overdue']
@@ -456,10 +584,34 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
                 <div
                   key={task.id}
                   className="relative flex h-[56px] items-center border-b border-line"
+                  onDragOver={(event) => handleTimelineRowDragOver(event, task.id)}
+                  onDragLeave={(event) => handleTimelineRowDragLeave(event, task.id)}
+                  onDrop={(event) => {
+                    void handleTimelineRowDrop(event, task.id);
+                  }}
                 >
+                  {dragOverLeft !== null ? (
+                    <>
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-y-0 z-10 bg-accent-dim/40"
+                        style={{ left: dragOverLeft, width: dayWidth }}
+                      />
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-y-0 z-20 border-l border-accent/60"
+                        style={{ left: dragOverLeft + dayWidth / 2 }}
+                      />
+                    </>
+                  ) : null}
                   {style && (
                     <div
-                      className={`absolute top-1/2 -translate-y-1/2 h-6 rounded-md ${barColor} transition-colors cursor-pointer`}
+                      draggable={!!onTaskDueDateChange}
+                      onDragStart={(event) => handleTimelineBarDragStart(event, task.id)}
+                      onDragEnd={handleTimelineBarDragEnd}
+                      className={`absolute top-1/2 -translate-y-1/2 h-6 rounded-md ${barColor} transition-colors ${
+                        onTaskDueDateChange ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                      } ${draggingTaskId === task.id ? 'opacity-60' : ''}`}
                       style={{
                         left: style.left + 4,
                         width: Math.min(style.width - 8, totalDays * dayWidth - style.left - 8),
@@ -479,11 +631,47 @@ export function TaskRoadmap({ tasks, monthCount: initialMonthCount = 2, sprintEn
             ) : null}
             {unscheduledTasks.map((task) => {
               const alertType = getTaskAlertType(task, sprintEndDate);
+              const hoveredDateKey =
+                unscheduledHover?.taskId === task.id ? unscheduledHover.dateKey : null;
+              const hoverDayIndex = hoveredDateKey
+                ? dateColumns.findIndex((col) => col.key === hoveredDateKey)
+                : -1;
+              const hoverLeft = hoverDayIndex >= 0 ? hoverDayIndex * dayWidth : null;
+              const isAddingDueDate = addingDueDateTaskId === task.id;
               return (
                 <div
                   key={task.id}
-                  className={`relative flex h-[56px] items-center border-b border-line ${alertType ? ALERT_BG[alertType] : ''}`}
-                />
+                  className={`relative flex h-[56px] items-center border-b border-line ${
+                    alertType ? ALERT_BG[alertType] : ''
+                  } ${onTaskDueDateChange ? 'cursor-cell' : ''}`}
+                  onMouseMove={(event) => handleUnscheduledRowMouseMove(event, task.id)}
+                  onMouseLeave={() => handleUnscheduledRowMouseLeave(task.id)}
+                >
+                  {hoverLeft !== null && hoveredDateKey && onTaskDueDateChange ? (
+                    <button
+                      type="button"
+                      className={`absolute top-1/2 -translate-y-1/2 h-8 rounded-md border border-dashed border-text-dim/50 bg-surface-2/80 text-text-dim hover:text-text hover:border-text-dim transition-colors flex items-center justify-center ${
+                        isAddingDueDate ? 'opacity-70 cursor-wait' : 'cursor-pointer'
+                      }`}
+                      style={{
+                        left: hoverLeft + 2,
+                        width: Math.max(18, dayWidth - 4),
+                      }}
+                      onClick={(event) => {
+                        void handleAddDueDate(event, task.id, hoveredDateKey);
+                      }}
+                      disabled={isAddingDueDate}
+                      aria-label={`${hoveredDateKey}에 마감일 추가`}
+                      title={`${hoveredDateKey}에 마감일 추가`}
+                    >
+                      {isAddingDueDate ? (
+                        <span className="text-[11px] leading-none">…</span>
+                      ) : (
+                        <PlusIcon className="size-3.5" />
+                      )}
+                    </button>
+                  ) : null}
+                </div>
               );
             })}
               </div>

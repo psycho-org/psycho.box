@@ -121,7 +121,14 @@ export async function handleRefresh(): Promise<NextResponse> {
   });
 
   const { response, payload } = await relayWithPayload(backendResponse);
-  if (!backendResponse.ok) return response;
+  if (!backendResponse.ok) {
+    console.error('[API] POST /auth/refresh failed', {
+      status: backendResponse.status,
+      hasRefreshToken: !!refreshToken,
+      payload,
+    });
+    return response;
+  }
 
   const { accessToken, userId } = parseAuthData(payload);
   const refreshTokenNew = extractRefreshToken(backendResponse.headers.get('set-cookie'));
@@ -171,6 +178,11 @@ export async function handleGetMe(): Promise<NextResponse> {
   const payload = readJsonSafely(raw);
 
   if (!backendResponse.ok) {
+    console.error('[API] GET /auth/me failed', {
+      refreshStatus: backendResponse.status,
+      hasRefreshToken: !!refreshToken,
+      payload,
+    });
     return NextResponse.json(payload, { status: backendResponse.status });
   }
 
@@ -178,6 +190,9 @@ export async function handleGetMe(): Promise<NextResponse> {
   const refreshTokenNew = extractRefreshToken(backendResponse.headers.get('set-cookie'));
 
   if (!user) {
+    console.error('[API] GET /auth/me missing user in refresh payload', {
+      payload,
+    });
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
