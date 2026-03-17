@@ -12,7 +12,8 @@ const VIEW_TITLES: Record<string, string> = {
   roadmap: '로드맵',
 };
 
-function getTitleFromPath(pathname: string, view: string | null): string {
+function getTitleFromPath(pathname: string, workspaceId: string, view: string | null): string {
+  if (pathname === `/workspaces/${workspaceId}`) return '대시보드';
   if (pathname.endsWith('/sprint-board')) return '스프린트 보드';
   if (pathname.endsWith('/sprints')) return '스프린트';
   if (pathname.endsWith('/analysis')) return '분석';
@@ -34,7 +35,7 @@ export default function WorkspaceLayout({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const view = searchParams.get('view');
-  const initialTitle = getTitleFromPath(pathname ?? '', view);
+  const initialTitle = getTitleFromPath(pathname ?? '', workspaceId, view);
 
   return (
     <PageTitleProvider initialTitle={initialTitle}>

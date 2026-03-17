@@ -8,6 +8,15 @@ export interface WorkspaceMemberDisplaySource {
   joinedAt?: string | null;
 }
 
+interface AuthMeResponse {
+  user?: {
+    id?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+  };
+}
+
 export interface AssigneeLike {
   id: string;
   name?: string;
@@ -56,10 +65,24 @@ export async function fetchWorkspaceMembers(
   const request = apiRequest<WorkspaceMemberDisplaySource[]>(
     `/api/real/workspaces/${workspaceId}/members`,
   )
-    .then((result) => {
+    .then(async (result) => {
       const members = result.ok && Array.isArray(result.data) ? result.data : [];
-      workspaceMembersCache.set(workspaceId, members);
-      return members;
+      const meResult = await apiRequest<AuthMeResponse>('/api/real/auth/me');
+      const currentUser = meResult.ok ? meResult.data?.user : undefined;
+      const accountId = currentUser?.id?.trim();
+      if (!accountId || members.some((member) => member.accountId === accountId)) {
+        workspaceMembersCache.set(workspaceId, members);
+        return members;
+      }
+
+      const fullName = [currentUser?.firstName?.trim(), currentUser?.lastName?.trim()].filter(Boolean).join(' ');
+      const fallbackMember: WorkspaceMemberDisplaySource = {
+        accountId,
+        name: fullName || currentUser?.email?.trim() || '나',
+      };
+      const nextMembers = [fallbackMember, ...members];
+      workspaceMembersCache.set(workspaceId, nextMembers);
+      return nextMembers;
     })
     .finally(() => {
       workspaceMembersPromiseCache.delete(workspaceId);
