@@ -10,7 +10,7 @@ import { TaskCreateModal } from '@/components/task-create-modal';
 import { TaskDetailModal, type TaskDetailModalTask } from '@/components/task-detail-modal';
 import { TaskRoadmap } from '@/components/task-roadmap';
 import { apiRequest } from '@/lib/client';
-import { USER_ID_COOKIE } from '@/lib/constants';
+import { USER_ID_COOKIE } from '@/lib/cookies';
 import { getErrorMessage } from '@/lib/error-messages';
 import type { TaskStatus } from '@/lib/task-status';
 import { TASK_STATUS_COLORS } from '@/lib/task-status';
