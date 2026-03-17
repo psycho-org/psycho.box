@@ -678,13 +678,13 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
             />
           </div>
         ) : view === 'assignee' ? (
-          <div className="relative flex gap-4">
+          <div className="relative flex flex-col gap-4 lg:flex-row">
             <aside
               ref={assigneePanelRef}
-              className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
+              className={`hidden overflow-hidden transition-all duration-200 lg:flex lg:flex-col ${
                 assigneePanelCollapsed
-                  ? 'w-4 items-center justify-center bg-transparent border-transparent shadow-none'
-                  : 'w-56 rounded-2xl border border-line/40 bg-surface-2/30'
+                  ? 'lg:w-4 lg:items-center lg:justify-center bg-transparent border-transparent shadow-none'
+                  : 'lg:w-56 rounded-2xl border border-line/40 bg-surface-2/30'
               }`}
             >
               {assigneePanelCollapsed ? (
@@ -750,11 +750,70 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                 </>
               )}
             </aside>
+            <div className="lg:hidden rounded-2xl border border-line/40 bg-surface-2/30">
+              <div className="border-b border-line/50 px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="m-0 text-[14px] font-semibold text-text">담당자</h3>
+                  <span className="text-[12px] text-text-dim">{assigneeCount}</span>
+                </div>
+              </div>
+              <div className="flex gap-2 overflow-x-auto px-3 py-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedAssignee(null)}
+                  className={`flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-left transition-colors ${
+                    selectedAssignee === null
+                      ? 'border-accent/30 bg-accent-dim/30 text-accent-soft'
+                      : 'border-line/50 bg-surface text-text'
+                  }`}
+                >
+                  <span className="inline-flex size-7 items-center justify-center rounded-full bg-surface-3 text-[11px] font-semibold text-text-dim">
+                    전
+                  </span>
+                  <span className="text-[12px] font-medium">전체</span>
+                </button>
+                {assigneeList.list.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setSelectedAssignee(a.id)}
+                    className={`flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-left transition-colors ${
+                      selectedAssignee === a.id
+                        ? 'border-accent/30 bg-accent-dim/30 text-accent-soft'
+                        : 'border-line/50 bg-surface text-text'
+                    }`}
+                  >
+                    <AssigneeAvatar assignee={{ id: a.id, name: a.name }} className="size-7" />
+                    <div className="min-w-0">
+                      <div className="max-w-[88px] truncate text-[12px] font-medium">{a.name}</div>
+                      <div className="text-[11px] text-text-dim">{a.count}</div>
+                    </div>
+                  </button>
+                ))}
+                {assigneeList.noAssigneeCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAssignee('none')}
+                    className={`flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-left transition-colors ${
+                      selectedAssignee === 'none'
+                        ? 'border-accent/30 bg-accent-dim/30 text-accent-soft'
+                        : 'border-line/50 bg-surface text-text'
+                    }`}
+                  >
+                    <AssigneeAvatar assignee={null} className="size-7" />
+                    <div className="min-w-0">
+                      <div className="max-w-[88px] truncate text-[12px] font-medium">담당자 없음</div>
+                      <div className="text-[11px] text-text-dim">{assigneeList.noAssigneeCount}</div>
+                    </div>
+                  </button>
+                ) : null}
+              </div>
+            </div>
             {assigneeToggleButtonLeft !== null ? (
               <button
                 type="button"
                 onClick={() => setAssigneePanelCollapsed((prev) => !prev)}
-                className="fixed top-[50svh] z-20 -translate-x-1/2 -translate-y-1/2 group flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
+                className="fixed top-[50svh] z-20 hidden -translate-x-1/2 -translate-y-1/2 group lg:flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
                 style={{ left: assigneeToggleButtonLeft }}
                 aria-label={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
                 title={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}

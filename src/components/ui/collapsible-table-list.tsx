@@ -103,7 +103,39 @@ export function CollapsibleTableList<T>({
             {/* 테이블 */}
             {isExpanded && (
               <div className="border-t border-line">
-                <table className="w-full min-w-[360px] border-collapse table-fixed">
+                <div className="lg:hidden space-y-2 p-3">
+                  {group.items.length === 0 ? (
+                    <div className="rounded-xl border border-line/60 bg-surface px-3 py-6 text-center text-[12px] text-text-dim">
+                      없음
+                    </div>
+                  ) : (
+                    group.items.map((item) => (
+                      <div
+                        key={getItemId(item)}
+                        className={`rounded-xl border border-line/60 bg-surface px-3 py-3 ${getItemRowClassName?.(item) ?? ''} ${onRowClick ? 'cursor-pointer transition-colors hover:bg-blue/5 focus:outline-none focus:bg-blue/10' : ''}`}
+                        onClick={() => onRowClick?.(item)}
+                        role={onRowClick ? 'button' : undefined}
+                        tabIndex={onRowClick ? 0 : undefined}
+                        onKeyDown={(e) => {
+                          if (onRowClick && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault();
+                            onRowClick(item);
+                          }
+                        }}
+                      >
+                        <div className="space-y-2.5">
+                          {columns.map((col) => (
+                            <div key={col.key} className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-3">
+                              <span className="text-[11px] font-medium text-text-dim">{col.label}</span>
+                              <div className="min-w-0 text-[13px] text-text">{col.render(item)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <table className="hidden w-full min-w-[360px] border-collapse table-fixed lg:table">
                   <colgroup>
                     {columns.map((col) => (
                       <col key={col.key} style={col.width ? { width: col.width } : undefined} />
@@ -137,7 +169,7 @@ export function CollapsibleTableList<T>({
                           key={getItemId(item)}
                           className={`border-b border-line/60 last:border-b-0 hover:bg-surface-2/30 transition-colors ${getItemRowClassName?.(item) ?? ''} ${onRowClick ? 'cursor-pointer hover:bg-blue/5 focus:outline-none focus:bg-blue/10' : ''}`}
                           onClick={() => onRowClick?.(item)}
-                          role={onRowClick ? "button" : undefined}
+                          role={onRowClick ? 'button' : undefined}
                           tabIndex={onRowClick ? 0 : undefined}
                           onKeyDown={(e) => {
                             if (onRowClick && (e.key === 'Enter' || e.key === ' ')) {

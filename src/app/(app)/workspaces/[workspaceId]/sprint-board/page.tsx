@@ -804,13 +804,13 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   }, [sprintPanelCollapsed]);
 
   return (
-    <div className="relative flex gap-4 h-full min-h-0">
+    <div className="relative flex h-full min-h-0 flex-col gap-4 lg:flex-row">
       <aside
         ref={sprintPanelRef}
-        className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
+        className={`hidden overflow-hidden transition-all duration-200 lg:flex lg:flex-col ${
           sprintPanelCollapsed
-            ? 'w-4 items-center justify-center bg-transparent border-transparent shadow-none'
-            : 'w-72 bg-surface border border-line/40 rounded-2xl shadow-sm'
+            ? 'lg:w-4 lg:items-center lg:justify-center bg-transparent border-transparent shadow-none'
+            : 'lg:w-72 bg-surface border border-line/40 rounded-2xl shadow-sm'
         }`}
       >
         {sprintPanelCollapsed ? (
@@ -834,7 +834,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
+            <div className="min-h-0 flex-1 overflow-y-auto p-2 space-y-1">
               {loading ? (
                 <p className="text-text-soft text-[13px] px-2 py-2">로딩 중...</p>
               ) : error && sprints.length === 0 ? (
@@ -843,7 +843,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                 <p className="text-text-soft text-[13px] px-2 py-2">스프린트가 없습니다.</p>
               ) : (
                 sprints.map((sprint) => (
-                  <div key={sprint.sprintId} className="group">
+                  <div key={sprint.sprintId} className="group shrink-0 w-[240px] lg:w-auto">
                     <div
                       className={`rounded-xl transition-colors ${
                         selectedSprintId === sprint.sprintId
@@ -877,7 +877,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                           className={`inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-all hover:bg-surface/70 hover:text-text disabled:cursor-not-allowed disabled:opacity-50 ${
                             selectedSprintId === sprint.sprintId
                               ? 'opacity-100'
-                              : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
+                              : 'opacity-100 lg:pointer-events-none lg:opacity-0 lg:group-hover:pointer-events-auto lg:group-hover:opacity-100'
                           }`}
                           aria-label="스프린트 수정"
                           title="스프린트 수정"
@@ -891,7 +891,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                           className={`inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-all hover:bg-surface/70 hover:text-red disabled:cursor-not-allowed disabled:opacity-50 ${
                             selectedSprintId === sprint.sprintId
                               ? 'opacity-100'
-                              : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
+                              : 'opacity-100 lg:pointer-events-none lg:opacity-0 lg:group-hover:pointer-events-auto lg:group-hover:opacity-100'
                           }`}
                           aria-label="스프린트 삭제"
                           title="스프린트 삭제"
@@ -908,6 +908,75 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
         )}
       </aside>
 
+      <section className="rounded-2xl border border-line/40 bg-surface shadow-sm lg:hidden">
+        <div className="flex items-start justify-between gap-3 border-b border-line/50 px-4 py-3">
+          <div className="min-w-0">
+            <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-dim">스프린트</p>
+            <p className="m-0 mt-1 truncate text-[14px] font-medium text-text">
+              {selectedSprint?.name ?? '스프린트를 선택하세요'}
+            </p>
+          </div>
+          <div className="flex items-center gap-0.5 shrink-0">
+            {selectedSprint ? (
+              <button
+                type="button"
+                onClick={() => setEditSprintOpen(true)}
+                className="inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-surface-2/70 hover:text-text"
+                aria-label="스프린트 수정"
+                title="스프린트 수정"
+              >
+                <EditIcon className="size-4" />
+              </button>
+            ) : null}
+            {selectedSprint ? (
+              <button
+                type="button"
+                onClick={() => setPendingDeleteSprint(selectedSprint)}
+                className="inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-surface-2/70 hover:text-red"
+                aria-label="스프린트 삭제"
+                title="스프린트 삭제"
+              >
+                <TrashIcon className="size-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setCreateSprintOpen(true)}
+              className="inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-surface-2/70 hover:text-accent-soft"
+              aria-label="스프린트 추가"
+              title="스프린트 추가"
+            >
+              <PlusIcon className="size-3.5" />
+            </button>
+          </div>
+        </div>
+        <div className="flex gap-2 overflow-x-auto px-3 py-3">
+          {sprints.map((sprint) => (
+            <button
+              key={sprint.sprintId}
+              type="button"
+              onClick={() => setSelectedSprintId(sprint.sprintId)}
+              className={`flex w-[176px] shrink-0 flex-col items-start gap-2 rounded-2xl border px-3 py-3 text-left transition-colors ${
+                selectedSprintId === sprint.sprintId
+                  ? 'border-accent/30 bg-accent-dim/30 text-accent-soft'
+                  : 'border-line/50 bg-surface-2/30 text-text'
+              }`}
+            >
+              <div className="flex w-full items-center justify-between gap-2">
+                <SprintIcon className="size-4 shrink-0" />
+                <span className="text-[11px] text-text-dim">{formatCompactDate(sprint.endDate)}</span>
+              </div>
+              <div className="w-full">
+                <div className="truncate text-[13px] font-medium">{sprint.name}</div>
+                <div className="mt-1 text-[11px] text-text-dim">
+                  {formatCompactDate(sprint.startDate)} ~ {formatCompactDate(sprint.endDate)}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <main className="flex-1 min-w-0 flex flex-col gap-4 overflow-hidden">
         {!selectedSprint ? (
           <div className="flex-1 flex items-center justify-center rounded-2xl border border-dashed border-line bg-surface text-text-dim">
@@ -915,13 +984,13 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
           </div>
         ) : (
           <>
-            <section className="shrink-0 bg-surface border border-line/40 rounded-2xl p-5 shadow-sm">
+            <section className="shrink-0 bg-surface border border-line/40 rounded-2xl p-4 shadow-sm sm:p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <p className="m-0 text-[12px] font-medium text-text-dim uppercase tracking-[0.14em]">
                     Sprint Board
                   </p>
-                  <h1 className="m-0 mt-2 text-[24px] font-semibold text-text">{selectedSprint.name}</h1>
+                  <h1 className="m-0 mt-2 text-[20px] font-semibold text-text sm:text-[24px]">{selectedSprint.name}</h1>
                   <p className="m-0 mt-2 text-[14px] text-text-soft">
                     {selectedSprint.goal?.trim() || '스프린트 목표가 아직 없습니다.'}
                   </p>
@@ -1013,7 +1082,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
               ) : null}
             </section>
 
-            <section className="flex-1 overflow-y-auto pr-1 min-h-0">
+            <section className="flex-1 overflow-y-auto min-h-0 pr-0 lg:pr-1">
               {boardLoading ? (
                 <div className="h-full flex items-center justify-center rounded-2xl border border-line/40 bg-surface text-text-soft">
                   보드를 불러오는 중...
@@ -1073,7 +1142,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3 shrink-0">
+                            <div className="flex w-full flex-wrap items-center justify-between gap-3 shrink-0 lg:w-auto lg:flex-nowrap lg:justify-end">
                               <span className="text-[12px] text-text-dim tabular-nums">
                                 {metrics.completedCount} / {metrics.totalCount}
                               </span>
@@ -1156,10 +1225,10 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                           <span>마감일 {formatDate(task.dueDate)}</span>
                                         </div>
                                       </div>
-                                      <div className="flex items-start gap-2 shrink-0">
+                                      <div className="flex w-full flex-wrap items-start gap-2 shrink-0 sm:w-auto sm:flex-nowrap">
                                         <select
                                           aria-label="프로젝트 이동"
-                                          className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text"
+                                          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text sm:flex-none"
                                           value={project.projectId}
                                           onClick={(event) => event.stopPropagation()}
                                           onChange={(event) => {
@@ -1209,7 +1278,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       <button
         type="button"
         onClick={() => setSprintPanelCollapsed((prev) => !prev)}
-        className="fixed top-[50svh] z-20 -translate-x-1/2 -translate-y-1/2 group flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
+        className="fixed top-[50svh] z-20 hidden -translate-x-1/2 -translate-y-1/2 group lg:flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
         style={toggleButtonLeft ? { left: toggleButtonLeft } : undefined}
         aria-label={sprintPanelCollapsed ? '스프린트 패널 펼치기' : '스프린트 패널 접기'}
         title={sprintPanelCollapsed ? '스프린트 패널 펼치기' : '스프린트 패널 접기'}

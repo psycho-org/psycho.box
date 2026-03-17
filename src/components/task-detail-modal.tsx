@@ -430,7 +430,7 @@ export function TaskDetailModal({
 
   const dialogContent = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
@@ -440,7 +440,7 @@ export function TaskDetailModal({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); if (hasChanges) onUpdated?.(); onPrev?.(); }}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-[10000] p-2.5 rounded-full bg-surface/80 border border-line/60 text-text-dim hover:text-text hover:bg-surface-2 transition-colors shadow-lg backdrop-blur-sm"
+          className="absolute left-4 top-1/2 z-[10000] hidden -translate-y-1/2 rounded-full border border-line/60 bg-surface/80 p-2.5 text-text-dim shadow-lg backdrop-blur-sm transition-colors hover:bg-surface-2 hover:text-text sm:flex"
           aria-label="이전 태스크"
         >
           <ChevronLeftIcon className="size-5" />
@@ -452,7 +452,7 @@ export function TaskDetailModal({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); if (hasChanges) onUpdated?.(); onNext?.(); }}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-[10000] p-2.5 rounded-full bg-surface/80 border border-line/60 text-text-dim hover:text-text hover:bg-surface-2 transition-colors shadow-lg backdrop-blur-sm"
+          className="absolute right-4 top-1/2 z-[10000] hidden -translate-y-1/2 rounded-full border border-line/60 bg-surface/80 p-2.5 text-text-dim shadow-lg backdrop-blur-sm transition-colors hover:bg-surface-2 hover:text-text sm:flex"
           aria-label="다음 태스크"
         >
           <ChevronRightIcon className="size-5" />
@@ -461,11 +461,11 @@ export function TaskDetailModal({
 
       {/* 모달 본체: 고정된 크기와 내부 스크롤 */}
       <div
-        className="w-full max-w-[640px] h-[85vh] max-h-[850px] min-h-[500px] flex flex-col bg-surface border border-line rounded-[16px] shadow-[0_24px_60px_rgba(0,0,0,0.45)] overflow-hidden"
+        className="flex h-[100svh] min-h-0 w-full max-w-[640px] flex-col overflow-hidden border border-line bg-surface shadow-[0_24px_60px_rgba(0,0,0,0.45)] sm:h-[85vh] sm:max-h-[850px] sm:min-h-[500px] sm:rounded-[16px]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-line shrink-0">
+        <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-4 sm:px-6">
           <h2 className="m-0 text-[16px] font-semibold text-text">태스크 상세</h2>
           <button type="button" onClick={handleClose} className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim hover:text-text transition-colors" aria-label="닫기">
             <XIcon className="size-4" />
@@ -473,7 +473,7 @@ export function TaskDetailModal({
         </div>
 
         {/* 본문 */}
-        <div className="px-6 py-5 flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
           {/* 로딩 */}
           {loading && (
             <div className="flex items-center gap-2 text-text-dim text-[13px] mb-4">
@@ -523,7 +523,7 @@ export function TaskDetailModal({
           </div>
 
           {/* 상태 + 마감일 */}
-          <div className="grid grid-cols-2 gap-5 mb-5">
+          <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
             {/* 상태 (클릭하여 변경) */}
             <div>
               <span className="text-[11px] font-medium text-text-dim uppercase tracking-wide">상태</span>
@@ -664,9 +664,9 @@ export function TaskDetailModal({
         </div>
 
         {/* 푸터 */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-line bg-surface shrink-0">
+        <div className="flex shrink-0 flex-col gap-3 border-t border-line bg-surface px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <span className="text-[11px] text-text-dim">더블클릭하면 필드를 수정할 수 있습니다</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="danger" onClick={() => setDeleteDialogOpen(true)} disabled={deleting}>
               삭제
             </Button>

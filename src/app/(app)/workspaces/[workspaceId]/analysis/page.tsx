@@ -271,7 +271,7 @@ export default function AnalysisPage({
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
-          <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-2xl border border-line/50 bg-surface-2/30">
+          <aside className="hidden min-h-[520px] flex-col overflow-hidden rounded-2xl border border-line/50 bg-surface-2/30 lg:flex">
             <div className="border-b border-line/50 px-4 py-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="m-0 text-[14px] font-semibold text-text">리포트 목록</h3>
@@ -334,6 +334,45 @@ export default function AnalysisPage({
           </aside>
 
           <div className="min-h-[420px] overflow-hidden rounded-2xl border border-line/50 bg-surface">
+            <div className="border-b border-line/50 px-4 py-3 lg:hidden">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="m-0 text-[14px] font-semibold text-text">리포트</h3>
+                <span className="text-[12px] text-text-dim">{reports.length}개</span>
+              </div>
+              <div className="mt-3 flex gap-2 overflow-x-auto">
+                {reports.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-line/60 bg-surface-2/30 px-4 py-3 text-[12px] text-text-dim">
+                    리포트가 없습니다.
+                  </div>
+                ) : (
+                  reports.map((report) => {
+                    const isSelected = selectedReportId === report.id;
+                    return (
+                      <button
+                        key={report.id}
+                        type="button"
+                        onClick={() => setSelectedReportId(report.id)}
+                        className={`flex w-[180px] shrink-0 flex-col items-start gap-2 rounded-2xl border px-3 py-3 text-left transition-colors ${
+                          isSelected
+                            ? 'border-accent/30 bg-accent-dim/30 shadow-sm'
+                            : 'border-line/50 bg-surface-2/30'
+                        }`}
+                      >
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-medium ${getStatusTone(report.status)}`}
+                          >
+                            {getStatusLabel(report.status)}
+                          </span>
+                          <span className="text-[10px] text-text-dim">{formatCompactDate(report.createdAt)}</span>
+                        </div>
+                        <div className="w-full truncate text-[12px] font-medium text-text">{report.title}</div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
             {!selectedSprint ? (
               <div className="flex h-full min-h-[420px] items-center justify-center px-6 text-center text-[14px] text-text-dim">
                 왼쪽에서 스프린트를 선택하세요.
