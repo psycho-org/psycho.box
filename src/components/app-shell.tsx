@@ -9,6 +9,7 @@ import { ViewModeToggle, BoardViewToggle } from '@/components/ui';
 import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { VIEW_TOGGLE_PAGES } from '@/lib/view-toggle-config';
 import { usePageTitle } from '@/components/page-title-context';
+import { useWorkspace } from '@/components/workspace-provider';
 
 function MenuIcon({ className }: { className?: string }) {
   return (
@@ -27,8 +28,6 @@ function XIcon({ className }: { className?: string }) {
 }
 
 interface AppShellProps {
-  workspaceId: string;
-  workspaceName: string;
   title?: string;
   children: React.ReactNode;
 }
@@ -156,7 +155,8 @@ function PersonIcon({ className }: { className?: string }) {
   );
 }
 
-export function AppShell({ workspaceId, workspaceName, title: titleProp, children }: AppShellProps) {
+export function AppShell({ title: titleProp, children }: AppShellProps) {
+  const { workspaceId } = useWorkspace();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const pageTitleCtx = usePageTitle();
@@ -219,7 +219,7 @@ export function AppShell({ workspaceId, workspaceName, title: titleProp, childre
       >
         <div className="h-16 px-4 lg:px-5 border-b border-line/60 bg-bg/90 backdrop-blur flex items-center justify-between gap-2 min-w-0">
           <div className="min-w-0 flex-1">
-            <WorkspaceSwitcher currentWorkspaceId={workspaceId} currentWorkspaceName={workspaceName} />
+            <WorkspaceSwitcher />
           </div>
           <button
             type="button"
