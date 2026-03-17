@@ -283,7 +283,7 @@ export function TaskCreateModal({
             취소
           </Button>
           <Button type="submit" loading={loading} disabled={!title.trim()}>
-            추가
+            +
           </Button>
         </div>
       </form>

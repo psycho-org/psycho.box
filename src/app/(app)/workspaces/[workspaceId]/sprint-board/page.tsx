@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '@/lib/client';
 import {
   applyWorkspaceMemberDisplayNamesToTasks,
@@ -134,6 +134,10 @@ interface SprintRangeValue {
   end: string;
 }
 
+function normalizeSprintGoal(goal: string) {
+  return goal.trim() || null;
+}
+
 export default function SprintBoardPage({ params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = use(params);
   const [sprints, setSprints] = useState<Sprint[]>([]);
@@ -159,14 +163,20 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [creatingProject, setCreatingProject] = useState(false);
   const [createSprintOpen, setCreateSprintOpen] = useState(false);
+  const [editSprintOpen, setEditSprintOpen] = useState(false);
+  const [deleteSprintOpen, setDeleteSprintOpen] = useState(false);
   const [sprintNameDraft, setSprintNameDraft] = useState('');
   const [sprintGoalDraft, setSprintGoalDraft] = useState('');
   const [sprintRangeDraft, setSprintRangeDraft] = useState<SprintRangeValue | null>(null);
   const [creatingSprint, setCreatingSprint] = useState(false);
+  const [updatingSprint, setUpdatingSprint] = useState(false);
+  const [deletingSprint, setDeletingSprint] = useState(false);
   const [createTaskProjectId, setCreateTaskProjectId] = useState<string | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [pendingDeleteTask, setPendingDeleteTask] = useState<{ id: string; title: string } | null>(null);
   const [sprintPanelCollapsed, setSprintPanelCollapsed] = useState(false);
+  const [toggleButtonLeft, setToggleButtonLeft] = useState<number | null>(null);
+  const sprintPanelRef = useRef<HTMLElement | null>(null);
   const canCreateProject = Boolean(selectedSprintId) && Boolean(projectNameDraft.trim()) && !creatingProject;
   const canCreateSprint =
     Boolean(sprintNameDraft.trim()) &&
@@ -197,7 +207,11 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
         : sprintList;
 
       setSprints(orderedSprintList);
-      setSelectedSprintId((prev) => options?.selectSprintId ?? prev ?? orderedSprintList[0]?.sprintId ?? null);
+      setSelectedSprintId((prev) => {
+        const preferredSprintId = options?.selectSprintId ?? prev;
+        const nextSelectedSprintId = orderedSprintList.find((sprint) => sprint.sprintId === preferredSprintId)?.sprintId;
+        return nextSelectedSprintId ?? orderedSprintList[0]?.sprintId ?? null;
+      });
       setError(null);
     } catch {
       setError('스프린트를 불러오는 중 오류가 발생했습니다.');
@@ -243,7 +257,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
           method: 'POST',
           body: JSON.stringify({
             name,
-            goal: sprintGoalDraft.trim() || null,
+            goal: normalizeSprintGoal(sprintGoalDraft),
             startDate: `${startDate}T00:00:00.000Z`,
             endDate: `${endDate}T23:59:59.000Z`,
           }),
@@ -267,6 +281,71 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       showSnackbar('스프린트 생성 중 오류가 발생했습니다.', 'error');
     } finally {
       setCreatingSprint(false);
+    }
+  }
+
+  async function handleUpdateSprint() {
+    if (!selectedSprint || !sprintRangeDraft || updatingSprint) return;
+    const name = sprintNameDraft.trim();
+    if (!name) return;
+
+    setUpdatingSprint(true);
+
+    try {
+      const result = await apiRequest(
+        `/api/real/workspaces/${workspaceId}/sprints/${selectedSprint.sprintId}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name,
+            goal: normalizeSprintGoal(sprintGoalDraft),
+            startDate: `${sprintRangeDraft.start}T00:00:00.000Z`,
+            endDate: `${sprintRangeDraft.end}T23:59:59.000Z`,
+          }),
+        },
+      );
+
+      if (!result.ok) {
+        showSnackbar(
+          getErrorMessage({ code: result.code, message: result.message, status: result.status }),
+          'error',
+        );
+        return;
+      }
+
+      setEditSprintOpen(false);
+      await loadSprints({ selectSprintId: selectedSprint.sprintId });
+    } catch {
+      showSnackbar('스프린트 수정 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setUpdatingSprint(false);
+    }
+  }
+
+  async function handleDeleteSprint() {
+    if (!selectedSprint || deletingSprint) return;
+
+    setDeletingSprint(true);
+
+    try {
+      const result = await apiRequest(`/api/real/workspaces/${workspaceId}/sprints/${selectedSprint.sprintId}`, {
+        method: 'DELETE',
+      });
+
+      if (!result.ok) {
+        showSnackbar(
+          getErrorMessage({ code: result.code, message: result.message, status: result.status }),
+          'error',
+        );
+        return;
+      }
+
+      setDeleteSprintOpen(false);
+      await loadSprints();
+    } catch {
+      showSnackbar('스프린트 삭제 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setDeletingSprint(false);
     }
   }
 
@@ -355,6 +434,16 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   );
   const sprintMinDate = selectedSprint?.startDate?.slice(0, 10);
   const sprintMaxDate = selectedSprint?.endDate?.slice(0, 10);
+
+  useEffect(() => {
+    if (!editSprintOpen || !selectedSprint) return;
+    setSprintNameDraft(selectedSprint.name);
+    setSprintGoalDraft(selectedSprint.goal ?? '');
+    setSprintRangeDraft({
+      start: selectedSprint.startDate.slice(0, 10),
+      end: selectedSprint.endDate.slice(0, 10),
+    });
+  }, [editSprintOpen, selectedSprint]);
 
   const totalTaskCount = useMemo(
     () => Object.values(tasksByProject).reduce((sum, tasks) => sum + tasks.length, 0),
@@ -582,34 +671,45 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     openDetailModal(currentTaskList[nextIndex]);
   }
 
-  const toggleLeftPosition = sprintPanelCollapsed ? 'left-[4rem]' : 'left-[18rem]';
+  useEffect(() => {
+    function updateToggleButtonLeft() {
+      const panelRect = sprintPanelRef.current?.getBoundingClientRect();
+      if (!panelRect) return;
+      setToggleButtonLeft(panelRect.right);
+    }
+
+    updateToggleButtonLeft();
+    const panelElement = sprintPanelRef.current;
+    const resizeObserver =
+      panelElement && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updateToggleButtonLeft())
+        : null;
+
+    if (panelElement && resizeObserver) {
+      resizeObserver.observe(panelElement);
+    }
+
+    window.addEventListener('resize', updateToggleButtonLeft);
+    window.addEventListener('scroll', updateToggleButtonLeft, { passive: true });
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateToggleButtonLeft);
+      window.removeEventListener('scroll', updateToggleButtonLeft);
+    };
+  }, [sprintPanelCollapsed]);
 
   return (
-    <div className="relative flex gap-0 h-full min-h-0">
+    <div className="relative flex gap-4 h-full min-h-0">
       <aside
-        className={`shrink-0 flex flex-col bg-surface border border-line/40 rounded-2xl overflow-hidden shadow-sm transition-all duration-200 ${
-          sprintPanelCollapsed ? 'w-16 opacity-100' : 'w-72 opacity-100'
+        ref={sprintPanelRef}
+        className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
+          sprintPanelCollapsed
+            ? 'w-4 items-center justify-center bg-transparent border-transparent shadow-none'
+            : 'w-72 bg-surface border border-line/40 rounded-2xl shadow-sm'
         }`}
       >
         {sprintPanelCollapsed ? (
-          <div className="flex h-full flex-col items-center justify-between py-4">
-            <div className="flex flex-col items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-2xl bg-accent-dim/30 text-accent">
-                <SprintIcon className="size-5" />
-              </div>
-              <div className="rounded-full border border-line/60 bg-surface-2/60 px-2 py-1 text-[11px] text-text-dim">
-                {sprints.length}
-              </div>
-            </div>
-            <div className="px-2">
-              <div className="rounded-2xl border border-line/60 bg-surface-2/50 px-2 py-2 text-center">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim">Now</div>
-                <div className="mt-1 line-clamp-4 break-words text-[11px] font-medium text-text">
-                  {selectedSprint?.name ?? 'Sprint'}
-                </div>
-              </div>
-            </div>
-          </div>
+          <div className="h-full w-px rounded-full bg-line/60" />
         ) : (
           <>
             <div className="p-4 border-b border-line/60">
@@ -624,7 +724,6 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line/60 bg-surface-2/50 px-3 py-1.5 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
                 >
                   <PlusIcon className="size-3.5" />
-                  추가
                 </button>
               </div>
             </div>
@@ -706,12 +805,8 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                   </div>
                 </div>
               </div>
-              <div className="mt-4 rounded-xl border border-line/50 bg-accent-dim/20 px-4 py-3 text-[13px] text-text-soft">
-                프로젝트 섹션 사이로 태스크를 드래그하면 매핑이 이동됩니다. 모바일이나 세밀한 조작이 필요할 때는 카드의 이동 셀렉트를 사용할 수 있습니다.
-              </div>
               <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <div className="flex items-center gap-2 rounded-xl border border-line/50 bg-surface-2/40 px-3 py-2">
-                  <PlusIcon className="size-4 text-text-dim" />
                   <input
                     value={projectNameDraft}
                     onChange={(event) => setProjectNameDraft(event.target.value)}
@@ -731,7 +826,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                     disabled={!canCreateProject}
                     className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {creatingProject ? '추가 중...' : '추가'}
+                    {creatingProject ? '...' : '+'}
                   </button>
                 </div>
                 <label className="flex items-center gap-2 rounded-xl border border-line/50 bg-surface-2/40 px-3 py-2 text-[13px] text-text">
@@ -823,7 +918,6 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-line/60 bg-surface-2/50 px-3 py-1.5 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
                               >
                                 <PlusIcon className="size-3.5" />
-                                태스크 추가
                               </button>
                               <span className="text-[12px] text-text-dim tabular-nums">
                                 {metrics.completedCount} / {metrics.totalCount}
@@ -933,7 +1027,8 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       <button
         type="button"
         onClick={() => setSprintPanelCollapsed((prev) => !prev)}
-        className={`absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 group flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-all duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text ${toggleLeftPosition}`}
+        className="fixed top-[50svh] z-20 -translate-x-1/2 -translate-y-1/2 group flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
+        style={toggleButtonLeft ? { left: toggleButtonLeft } : undefined}
         aria-label={sprintPanelCollapsed ? '스프린트 패널 펼치기' : '스프린트 패널 접기'}
         title={sprintPanelCollapsed ? '스프린트 패널 펼치기' : '스프린트 패널 접기'}
       >
@@ -1053,10 +1148,91 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
               취소
             </Button>
             <Button type="submit" loading={creatingSprint} disabled={!canCreateSprint}>
-              추가
+              +
             </Button>
           </div>
         </form>
+      </Dialog>
+      <Dialog open={editSprintOpen} onClose={() => !updatingSprint && setEditSprintOpen(false)} title="스프린트 수정">
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleUpdateSprint();
+          }}
+        >
+          <div>
+            <label htmlFor="edit-sprint-name" className="block text-[13px] font-medium text-text-soft mb-1.5">
+              이름 <span className="text-red">*</span>
+            </label>
+            <input
+              id="edit-sprint-name"
+              type="text"
+              value={sprintNameDraft}
+              onChange={(event) => setSprintNameDraft(event.target.value)}
+              placeholder="스프린트 이름"
+              className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              disabled={updatingSprint}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label htmlFor="edit-sprint-goal" className="block text-[13px] font-medium text-text-soft mb-1.5">
+              목표
+            </label>
+            <textarea
+              id="edit-sprint-goal"
+              value={sprintGoalDraft}
+              onChange={(event) => setSprintGoalDraft(event.target.value)}
+              placeholder="스프린트 목표 (선택)"
+              rows={3}
+              className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none"
+              disabled={updatingSprint}
+            />
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-text-soft mb-1.5">
+              기간 <span className="text-red">*</span>
+            </label>
+            <DatePicker
+              mode="range"
+              value={sprintRangeDraft}
+              onChange={(value) => setSprintRangeDraft(value as SprintRangeValue | null)}
+              placeholder="스프린트 기간 선택"
+              disabled={updatingSprint}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditSprintOpen(false)}
+              disabled={updatingSprint}
+            >
+              취소
+            </Button>
+            <Button type="submit" loading={updatingSprint} disabled={!canCreateSprint}>
+              저장
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+      <Dialog open={deleteSprintOpen} onClose={() => !deletingSprint && setDeleteSprintOpen(false)} title="스프린트 삭제">
+        <div className="flex flex-col gap-4">
+          <p className="m-0 text-[13px] text-text-soft">
+            {selectedSprint
+              ? `'${selectedSprint.name}' 스프린트를 삭제할까요? 연결된 프로젝트와 태스크 상태에 영향이 있을 수 있습니다.`
+              : '선택된 스프린트를 삭제할까요?'}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setDeleteSprintOpen(false)} disabled={deletingSprint}>
+              취소
+            </Button>
+            <Button type="button" variant="danger" onClick={() => void handleDeleteSprint()} loading={deletingSprint}>
+              삭제
+            </Button>
+          </div>
+        </div>
       </Dialog>
     </div>
   );
