@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import { apiRequest } from '@/lib/client';
 import {
   applyWorkspaceMemberDisplayNamesToTasks,
@@ -62,9 +62,19 @@ export default function SprintsPage({ params }: { params: Promise<{ workspaceId:
   // Map of projectId -> Tasks
   const [tasksByProject, setTasksByProject] = useState<Record<string, Task[]>>({});
   const [tasksLoadingByProject, setTasksLoadingByProject] = useState<Record<string, boolean>>({});
-  
+  const tasksByProjectRef = useRef<Record<string, Task[]>>({});
+  const tasksLoadingByProjectRef = useRef<Record<string, boolean>>({});
+
   // Which projects are expanded to show tasks
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    tasksByProjectRef.current = tasksByProject;
+  }, [tasksByProject]);
+
+  useEffect(() => {
+    tasksLoadingByProjectRef.current = tasksLoadingByProject;
+  }, [tasksLoadingByProject]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -85,37 +95,8 @@ export default function SprintsPage({ params }: { params: Promise<{ workspaceId:
       .finally(() => setLoading(false));
   }, [workspaceId]);
 
-  useEffect(() => {
-    if (!workspaceId || !selectedSprintId) {
-      setProjects([]);
-      setTasksByProject({});
-      setExpandedProjects({});
-      return;
-    }
-
-    setProjectsLoading(true);
-    apiRequest<{ data: Project[] }>(`/api/real/workspaces/${workspaceId}/sprints/${selectedSprintId}/projects`)
-      .then((result) => {
-        if (result.ok) {
-          const list = Array.isArray(result.data) ? result.data : [];
-          setProjects(list);
-          
-          // Auto-expand and fetch tasks for the first project if it exists
-          if (list.length > 0) {
-            const firstProjectId = list[0].projectId;
-            setExpandedProjects({ [firstProjectId]: true });
-            fetchTasksForProject(firstProjectId);
-          }
-        } else {
-          setError(result.message ?? '프로젝트 목록을 불러오지 못했습니다.');
-        }
-      })
-      .catch(() => setError('프로젝트를 불러오는 중 오류가 발생했습니다.'))
-      .finally(() => setProjectsLoading(false));
-  }, [workspaceId, selectedSprintId]);
-
-  const fetchTasksForProject = (projectId: string) => {
-    if (tasksByProject[projectId] || tasksLoadingByProject[projectId]) return; // Already fetched or fetching
+  const fetchTasksForProject = useCallback((projectId: string) => {
+    if (tasksByProjectRef.current[projectId] || tasksLoadingByProjectRef.current[projectId]) return;
 
     setTasksLoadingByProject(prev => ({ ...prev, [projectId]: true }));
     Promise.all([
@@ -132,7 +113,35 @@ export default function SprintsPage({ params }: { params: Promise<{ workspaceId:
         }
       })
       .finally(() => setTasksLoadingByProject(prev => ({ ...prev, [projectId]: false })));
-  };
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId || !selectedSprintId) {
+      setProjects([]);
+      setTasksByProject({});
+      setExpandedProjects({});
+      return;
+    }
+
+    setProjectsLoading(true);
+    apiRequest<{ data: Project[] }>(`/api/real/workspaces/${workspaceId}/sprints/${selectedSprintId}/projects`)
+      .then((result) => {
+        if (result.ok) {
+          const list = Array.isArray(result.data) ? result.data : [];
+          setProjects(list);
+
+          if (list.length > 0) {
+            const firstProjectId = list[0].projectId;
+            setExpandedProjects({ [firstProjectId]: true });
+            fetchTasksForProject(firstProjectId);
+          }
+        } else {
+          setError(result.message ?? '프로젝트 목록을 불러오지 못했습니다.');
+        }
+      })
+      .catch(() => setError('프로젝트를 불러오는 중 오류가 발생했습니다.'))
+      .finally(() => setProjectsLoading(false));
+  }, [workspaceId, selectedSprintId, fetchTasksForProject]);
 
   const toggleProjectExpand = (projectId: string) => {
     setExpandedProjects(prev => {

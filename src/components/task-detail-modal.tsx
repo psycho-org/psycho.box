@@ -261,7 +261,7 @@ export function TaskDetailModal({
       })
       .catch(() => setError('불러오기 실패'))
       .finally(() => setLoading(false));
-  }, [task?.id, workspaceId]);
+  }, [task, workspaceId, memberDisplayNameMap]);
 
   const fetchMembers = useCallback(() => {
     if (workspaceMembers?.length) {
@@ -317,7 +317,7 @@ export function TaskDetailModal({
     }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [open, onClose, onPrev, onNext, hasPrev, hasNext]);
+  }, [open, onClose, onPrev, onNext, hasPrev, hasNext, hasChanges, onUpdated]);
 
   /* 상태 드롭다운 바깥 클릭 닫기 */
   useEffect(() => {

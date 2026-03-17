@@ -262,6 +262,19 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     ? currentTaskList.findIndex((task) => task.id === selectedTask.id)
     : -1;
 
+  const getProjectMetrics = useCallback((projectId: string, fallback: Project['progress']) => {
+    const tasks = tasksByProject[projectId];
+    if (!tasks) return fallback;
+
+    const totalCount = tasks.length;
+    const completedCount = tasks.filter((task) => isDone(task.status)).length;
+    return {
+      totalCount,
+      completedCount,
+      progress: totalCount > 0 ? (completedCount / totalCount) * 100 : 0,
+    };
+  }, [tasksByProject]);
+
   const filteredAndSortedProjects = useMemo(() => {
     const withVisibleTasks = projects.map((project) => {
       const tasks = tasksByProject[project.projectId] ?? [];
@@ -289,20 +302,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       return [...withVisibleTasks].sort((a, b) => b.metrics.progress - a.metrics.progress);
     }
     return [...withVisibleTasks].sort((a, b) => b.tasks.length - a.tasks.length);
-  }, [projects, tasksByProject, sortBy, taskFilter]);
-
-  function getProjectMetrics(projectId: string, fallback: Project['progress']) {
-    const tasks = tasksByProject[projectId];
-    if (!tasks) return fallback;
-
-    const totalCount = tasks.length;
-    const completedCount = tasks.filter((task) => isDone(task.status)).length;
-    return {
-      totalCount,
-      completedCount,
-      progress: totalCount > 0 ? (completedCount / totalCount) * 100 : 0,
-    };
-  }
+  }, [projects, tasksByProject, sortBy, taskFilter, getProjectMetrics]);
 
   function moveTaskLocally(taskId: string, fromProjectId: string, toProjectId: string) {
     let movedTask: Task | null = null;

@@ -188,7 +188,7 @@ export function DatePicker({
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
+  }, [open, popupPlacement]);
 
   useEffect(() => {
     if (mode !== 'range' || !isDragging) return;

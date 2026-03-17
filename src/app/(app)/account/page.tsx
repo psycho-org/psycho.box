@@ -98,7 +98,7 @@ export default function AccountPage() {
         setPasswordPolicy(result.data);
       }
     });
-  }, []);
+  }, [setAuthUser]);
 
   async function handleNameSubmit(e: React.FormEvent) {
     e.preventDefault();

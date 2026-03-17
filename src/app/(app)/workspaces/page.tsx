@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
 import { UserMenu } from '@/components/user-menu';
@@ -62,7 +62,7 @@ export default function WorkspacesPage() {
     );
   }, [setAuthUser]);
 
-  function loadWorkspaces() {
+  const loadWorkspaces = useCallback(() => {
     setLoading(true);
     setError(null);
     apiRequest<{ id: string; title?: string; name?: string }[]>('/api/real/workspaces')
@@ -81,11 +81,11 @@ export default function WorkspacesPage() {
       })
       .catch(() => setError(getErrorMessage({ status: 500 })))
       .finally(() => setLoading(false));
-  }
+  }, [setAuthUser]);
 
   useEffect(() => {
     loadWorkspaces();
-  }, []);
+  }, [loadWorkspaces]);
 
   return (
     <div className="min-h-screen bg-bg flex">

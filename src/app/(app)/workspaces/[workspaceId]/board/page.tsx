@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePageTitle } from '@/components/page-title-context';
 import { TaskStatusDot, CollapsibleTableList } from '@/components/ui';
@@ -182,16 +182,12 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const display = displayParam === 'list' ? 'list' : displayParam === 'card' ? 'card' : 'kanban';
   const [assigneesExpanded, setAssigneesExpanded] = useState(true);
   const [selectedAssignee, setSelectedAssignee] = useState<AssigneeFilterKey | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId] = useState<string | null>(() => getCurrentUserId());
   const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberDisplaySource[]>([]);
   const [memberDisplayNameMap, setMemberDisplayNameMap] = useState<WorkspaceMemberDisplayNameMap>({});
-
-  useEffect(() => {
-    setCurrentUserId(getCurrentUserId());
-  }, []);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -400,7 +396,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     await moveTaskStatus(taskId, targetStatus);
   }
 
-  function loadTasks() {
+  const loadTasks = useCallback(() => {
     if (!workspaceId) return;
     setLoading(true);
     Promise.all([
@@ -425,11 +421,11 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       })
       .catch(() => setError('태스크를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
-  }
+  }, [workspaceId]);
 
   useEffect(() => {
     loadTasks();
-  }, [workspaceId]);
+  }, [loadTasks]);
 
   const tasksByStatus = (status: TaskStatus) => {
     const source = view === 'my' ? myTasks : view === 'assignee' ? filteredTasks : tasks;
