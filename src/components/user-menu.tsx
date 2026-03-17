@@ -107,9 +107,6 @@ export function UserMenu() {
     setLoggingOut(false);
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/54d72956-08dc-43e8-b578-f219e74b41b2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user-menu.tsx:render',message:'UserMenu render',data:{loading,hasUser:!!user,path:typeof window!=='undefined'?window.location.pathname:'ssr'},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-  // #endregion
   if (loading) {
     return (
       <div className="shrink-0 h-9 w-16 rounded-lg bg-surface-2 animate-pulse" aria-hidden />

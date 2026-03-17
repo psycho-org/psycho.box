@@ -39,9 +39,6 @@ function ArrowLeftIcon({ className }: { className?: string }) {
 
 export default function AccountPage() {
   const { user: authUser, setUser: setAuthUser } = useAuth();
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/54d72956-08dc-43e8-b578-f219e74b41b2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'account/page.tsx:mount',message:'AccountPage mount',data:{hasAuthUser:!!authUser,path:typeof window!=='undefined'?window.location.pathname:'ssr'},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [givenName, setGivenName] = useState('');
@@ -76,13 +73,7 @@ export default function AccountPage() {
   }
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/54d72956-08dc-43e8-b578-f219e74b41b2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'account/page.tsx:useEffect',message:'AccountPage fetch started',data:{},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     apiRequest<{ user?: User }>('/api/real/auth/me').then((result) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/54d72956-08dc-43e8-b578-f219e74b41b2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'account/page.tsx:fetchResult',message:'AccountPage fetch result',data:{ok:result.ok,hasUser:!!result.data?.user,status:result.status},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       if (result.ok && result.data?.user) {
         const u = result.data.user;
         setUser(u);
