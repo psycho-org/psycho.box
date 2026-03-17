@@ -120,6 +120,22 @@ function PanelToggleIcon({ className, collapsed }: { className?: string; collaps
   );
 }
 
+function ChevronIcon({ className, collapsed }: { className?: string; collapsed: boolean }) {
+  return (
+    <svg
+      className={`${className} transition-transform ${collapsed ? '-rotate-90' : ''}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 function formatDate(value?: string | null) {
   if (!value) return '-';
   return new Date(value).toLocaleDateString('ko-KR');
@@ -156,6 +172,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   const [snackbarVariant, setSnackbarVariant] = useState<'default' | 'success' | 'error'>('default');
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskDetailModalTask | null>(null);
+  const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({});
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberDisplaySource[]>([]);
   const [memberDisplayNameMap, setMemberDisplayNameMap] = useState<WorkspaceMemberDisplayNameMap>({});
   const [sortBy, setSortBy] = useState<ProjectSort>('manual');
@@ -671,6 +688,13 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     openDetailModal(currentTaskList[nextIndex]);
   }
 
+  function toggleProjectCollapsed(projectId: string) {
+    setCollapsedProjects((prev) => ({
+      ...prev,
+      [projectId]: !(prev[projectId] ?? false),
+    }));
+  }
+
   useEffect(() => {
     function updateToggleButtonLeft() {
       const panelRect = sprintPanelRef.current?.getBoundingClientRect();
@@ -721,7 +745,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                 <button
                   type="button"
                   onClick={() => setCreateSprintOpen(true)}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line/60 bg-surface-2/50 px-3 py-1.5 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-line/60 bg-surface-2/50 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
                 >
                   <PlusIcon className="size-3.5" />
                 </button>
@@ -824,7 +848,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                     type="button"
                     onClick={() => void handleCreateProject()}
                     disabled={!canCreateProject}
-                    className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+                    className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-[12px] font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {creatingProject ? '...' : '+'}
                   </button>
@@ -877,6 +901,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                 <div className="space-y-4 pb-4">
                   {filteredAndSortedProjects.map(({ project, tasks, metrics }) => {
                     const isDropTarget = dragOverProjectId === project.projectId;
+                    const isCollapsed = collapsedProjects[project.projectId] ?? false;
 
                     return (
                       <section
@@ -903,19 +928,30 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                       >
                         <div className="sticky top-0 z-10 rounded-t-2xl border-b border-line/40 bg-surface/95 backdrop-blur px-5 py-4">
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="min-w-0">
-                              <h3 className="m-0 text-[16px] font-semibold text-text truncate">{project.name}</h3>
-                              <p className="m-0 mt-1 text-[12px] text-text-dim">
-                                {tasks.length === 0
-                                  ? '비어 있는 프로젝트입니다. 태스크를 드롭해 시작할 수 있습니다.'
-                                  : `${tasks.length}개의 태스크가 이 프로젝트에 연결되어 있습니다.`}
-                              </p>
+                            <div className="min-w-0 flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => toggleProjectCollapsed(project.projectId)}
+                                className="inline-flex shrink-0 items-center justify-center rounded-lg p-1 text-text-dim transition-colors hover:text-text"
+                                aria-label={isCollapsed ? '프로젝트 펼치기' : '프로젝트 접기'}
+                                title={isCollapsed ? '프로젝트 펼치기' : '프로젝트 접기'}
+                              >
+                                <ChevronIcon className="size-4" collapsed={isCollapsed} />
+                              </button>
+                              <div className="min-w-0">
+                                <h3 className="m-0 text-[16px] font-semibold text-text truncate">{project.name}</h3>
+                                <p className="m-0 mt-1 text-[12px] text-text-dim">
+                                  {tasks.length === 0
+                                    ? '비어 있는 프로젝트입니다. 태스크를 드롭해 시작할 수 있습니다.'
+                                    : `${tasks.length}개의 태스크가 이 프로젝트에 연결되어 있습니다.`}
+                                </p>
+                              </div>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => setCreateTaskProjectId(project.projectId)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-line/60 bg-surface-2/50 px-3 py-1.5 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
+                                className="inline-flex size-8 items-center justify-center rounded-lg border border-line/60 bg-surface-2/50 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
                               >
                                 <PlusIcon className="size-3.5" />
                               </button>
@@ -932,89 +968,91 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                           </div>
                         </div>
 
-                        <div className="p-4">
-                          {tasks.length === 0 ? (
-                            <div className="rounded-2xl border border-dashed border-line/60 bg-surface-2/30 px-4 py-8 text-center text-[13px] text-text-dim">
-                              {dragState ? '여기에 드롭해서 이 프로젝트로 이동' : '연결된 태스크가 없습니다.'}
-                            </div>
-                          ) : (
-                            <div className="grid gap-3">
-                              {tasks.map((task) => (
-                                <article
-                                  key={task.id}
-                                  draggable
-                                  onDragStart={(event) => {
-                                    event.dataTransfer.effectAllowed = 'move';
-                                    event.dataTransfer.setData('text/plain', task.id);
-                                    setDragState({ taskId: task.id, fromProjectId: project.projectId });
-                                    setDragOverProjectId(null);
-                                  }}
-                                  onDragEnd={() => {
-                                    setDragState(null);
-                                    setDragOverProjectId(null);
-                                  }}
-                                  onClick={() => openDetailModal(task)}
-                                  className={`rounded-2xl border px-4 py-3 transition-all ${
-                                    movingTaskId === task.id
-                                      ? 'opacity-60 border-line/50 bg-surface-2/40'
-                                      : dragState?.taskId === task.id
-                                        ? 'opacity-35 rotate-[0.6deg] scale-[0.985] border-accent/70 bg-accent-dim/20 shadow-[0_10px_24px_rgba(0,0,0,0.22)]'
-                                        : 'border-line/50 bg-surface-2/40 hover:shadow-sm hover:border-line/80'
-                                  }`}
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <TaskStatusDot status={task.status} className="size-2.5 shrink-0" />
-                                        <h4 className="m-0 text-[14px] font-medium text-text break-all">
-                                          {task.title}
-                                        </h4>
+                        {isCollapsed ? null : (
+                          <div className="p-4">
+                            {tasks.length === 0 ? (
+                              <div className="rounded-2xl border border-dashed border-line/60 bg-surface-2/30 px-4 py-8 text-center text-[13px] text-text-dim">
+                                {dragState ? '여기에 드롭해서 이 프로젝트로 이동' : '연결된 태스크가 없습니다.'}
+                              </div>
+                            ) : (
+                              <div className="grid gap-3">
+                                {tasks.map((task) => (
+                                  <article
+                                    key={task.id}
+                                    draggable
+                                    onDragStart={(event) => {
+                                      event.dataTransfer.effectAllowed = 'move';
+                                      event.dataTransfer.setData('text/plain', task.id);
+                                      setDragState({ taskId: task.id, fromProjectId: project.projectId });
+                                      setDragOverProjectId(null);
+                                    }}
+                                    onDragEnd={() => {
+                                      setDragState(null);
+                                      setDragOverProjectId(null);
+                                    }}
+                                    onClick={() => openDetailModal(task)}
+                                    className={`rounded-2xl border px-4 py-3 transition-all ${
+                                      movingTaskId === task.id
+                                        ? 'opacity-60 border-line/50 bg-surface-2/40'
+                                        : dragState?.taskId === task.id
+                                          ? 'opacity-35 rotate-[0.6deg] scale-[0.985] border-accent/70 bg-accent-dim/20 shadow-[0_10px_24px_rgba(0,0,0,0.22)]'
+                                          : 'border-line/50 bg-surface-2/40 hover:shadow-sm hover:border-line/80'
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <TaskStatusDot status={task.status} className="size-2.5 shrink-0" />
+                                          <h4 className="m-0 text-[14px] font-medium text-text break-all">
+                                            {task.title}
+                                          </h4>
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-text-dim">
+                                          <span>{task.assignee?.name || task.assignee?.email || '담당자 없음'}</span>
+                                          <span>마감일 {formatDate(task.dueDate)}</span>
+                                        </div>
                                       </div>
-                                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-text-dim">
-                                        <span>{task.assignee?.name || task.assignee?.email || '담당자 없음'}</span>
-                                        <span>마감일 {formatDate(task.dueDate)}</span>
+                                      <div className="flex items-start gap-2 shrink-0">
+                                        <select
+                                          aria-label="프로젝트 이동"
+                                          className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text"
+                                          value={project.projectId}
+                                          onClick={(event) => event.stopPropagation()}
+                                          onChange={(event) => {
+                                            event.stopPropagation();
+                                            const toProjectId = event.target.value;
+                                            if (toProjectId !== project.projectId) {
+                                              void commitTaskMove(task.id, project.projectId, toProjectId);
+                                            }
+                                          }}
+                                        >
+                                          {projects.map((targetProject) => (
+                                            <option key={targetProject.projectId} value={targetProject.projectId}>
+                                              {targetProject.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <button
+                                          type="button"
+                                          aria-label="태스크 삭제"
+                                          title="태스크 삭제"
+                                          disabled={deletingTaskId === task.id}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            setPendingDeleteTask({ id: task.id, title: task.title });
+                                          }}
+                                          className="rounded-lg border border-line/70 bg-surface px-2 py-1.5 text-text-dim transition-colors hover:border-red/40 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                          <TrashIcon className="size-4" />
+                                        </button>
                                       </div>
                                     </div>
-                                    <div className="flex items-start gap-2 shrink-0">
-                                      <select
-                                        aria-label="프로젝트 이동"
-                                        className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text"
-                                        value={project.projectId}
-                                        onClick={(event) => event.stopPropagation()}
-                                        onChange={(event) => {
-                                          event.stopPropagation();
-                                          const toProjectId = event.target.value;
-                                          if (toProjectId !== project.projectId) {
-                                            void commitTaskMove(task.id, project.projectId, toProjectId);
-                                          }
-                                        }}
-                                      >
-                                        {projects.map((targetProject) => (
-                                          <option key={targetProject.projectId} value={targetProject.projectId}>
-                                            {targetProject.name}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <button
-                                        type="button"
-                                        aria-label="태스크 삭제"
-                                        title="태스크 삭제"
-                                        disabled={deletingTaskId === task.id}
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          setPendingDeleteTask({ id: task.id, title: task.title });
-                                        }}
-                                        className="rounded-lg border border-line/70 bg-surface px-2 py-1.5 text-text-dim transition-colors hover:border-red/40 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
-                                      >
-                                        <TrashIcon className="size-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                </article>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                                  </article>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </section>
                     );
                   })}
