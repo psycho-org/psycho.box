@@ -1074,29 +1074,6 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                               </div>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => setCreateTaskProjectId(project.projectId)}
-                                className="inline-flex size-8 items-center justify-center rounded-lg bg-surface-2/50 text-[12px] font-medium text-text transition-colors hover:text-accent-soft"
-                              >
-                                <PlusIcon className="size-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPendingDeleteProject({
-                                    projectId: project.projectId,
-                                    name: project.name,
-                                    taskCount: projectTaskCount,
-                                  })
-                                }
-                                disabled={deletingProjectId === project.projectId}
-                                className="inline-flex size-8 items-center justify-center rounded-lg bg-surface-2/50 text-text-dim transition-colors hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
-                                aria-label="프로젝트 삭제"
-                                title="프로젝트 삭제"
-                              >
-                                <TrashIcon className="size-3.5" />
-                              </button>
                               <span className="text-[12px] text-text-dim tabular-nums">
                                 {metrics.completedCount} / {metrics.totalCount}
                               </span>
@@ -1105,6 +1082,31 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                   className="h-full bg-accent transition-all duration-300"
                                   style={{ width: `${metrics.progress}%` }}
                                 />
+                              </div>
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setCreateTaskProjectId(project.projectId)}
+                                  className="inline-flex size-8 items-center justify-center rounded-lg text-[12px] font-medium text-text transition-colors hover:bg-blue/15 hover:text-blue"
+                                >
+                                  <PlusIcon className="size-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPendingDeleteProject({
+                                      projectId: project.projectId,
+                                      name: project.name,
+                                      taskCount: projectTaskCount,
+                                    })
+                                  }
+                                  disabled={deletingProjectId === project.projectId}
+                                  className="inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-surface/70 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
+                                  aria-label="프로젝트 삭제"
+                                  title="프로젝트 삭제"
+                                >
+                                  <TrashIcon className="size-3.5" />
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -1178,12 +1180,12 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                           type="button"
                                           aria-label="태스크 삭제"
                                           title="태스크 삭제"
-                                        disabled={deletingTaskId === task.id}
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          setPendingDeleteTask({ id: task.id, title: task.title });
-                                        }}
-                                          className="rounded-lg bg-surface px-2 py-1.5 text-text-dim transition-colors hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
+                                          disabled={deletingTaskId === task.id}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            setPendingDeleteTask({ id: task.id, title: task.title });
+                                          }}
+                                          className="inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-surface/70 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                           <TrashIcon className="size-4" />
                                         </button>
