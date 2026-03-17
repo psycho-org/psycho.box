@@ -1,0 +1,20 @@
+[Unit]
+Description=psycho.box Next.js application
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/psycho.box
+EnvironmentFile=/home/ubuntu/psycho.box/.env.production
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=psycho-box
+
+[Install]
+WantedBy=multi-user.target
+
