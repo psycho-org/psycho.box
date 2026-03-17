@@ -541,8 +541,13 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     pageTitleCtx?.setTitle(pageTitle);
   }, [pageTitle, pageTitleCtx]);
 
+  const showAssigneeSidebar = view === 'assignee' && !loading && !error && display !== 'card' && display !== 'list';
+
   useEffect(() => {
-    if (view !== 'assignee') return;
+    if (!showAssigneeSidebar) {
+      setAssigneeToggleButtonLeft(null);
+      return;
+    }
 
     function updateToggleButtonLeft() {
       const panelRect = assigneePanelRef.current?.getBoundingClientRect();
@@ -568,7 +573,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       window.removeEventListener('resize', updateToggleButtonLeft);
       window.removeEventListener('scroll', updateToggleButtonLeft);
     };
-  }, [view, assigneePanelCollapsed]);
+  }, [showAssigneeSidebar, assigneePanelCollapsed]);
 
   return (
     <>
@@ -726,16 +731,18 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                 </>
               )}
             </aside>
-            <button
-              type="button"
-              onClick={() => setAssigneePanelCollapsed((prev) => !prev)}
-              className="fixed top-[50svh] z-20 -translate-x-1/2 -translate-y-1/2 group flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
-              style={assigneeToggleButtonLeft ? { left: assigneeToggleButtonLeft } : undefined}
-              aria-label={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
-              title={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
-            >
-              <PanelToggleIcon className="size-3.5 group-hover:scale-110" collapsed={assigneePanelCollapsed} />
-            </button>
+            {assigneeToggleButtonLeft !== null ? (
+              <button
+                type="button"
+                onClick={() => setAssigneePanelCollapsed((prev) => !prev)}
+                className="fixed top-[50svh] z-20 -translate-x-1/2 -translate-y-1/2 group flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
+                style={{ left: assigneeToggleButtonLeft }}
+                aria-label={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
+                title={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
+              >
+                <PanelToggleIcon className="size-3.5 group-hover:scale-110" collapsed={assigneePanelCollapsed} />
+              </button>
+            ) : null}
             {/* 담당자별 태스크 보드 */}
             <div className="flex-1 min-w-0">
               <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-1">
