@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { WorkspaceSwitcher } from '@/components/workspace-switcher';
@@ -9,8 +9,6 @@ import { ViewModeToggle, BoardViewToggle } from '@/components/ui';
 import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { VIEW_TOGGLE_PAGES } from '@/lib/view-toggle-config';
 import { usePageTitle } from '@/components/page-title-context';
-import { useAuth } from '@/components/auth-provider';
-import { apiRequest } from '@/lib/client';
 
 function MenuIcon({ className }: { className?: string }) {
   return (
@@ -159,17 +157,8 @@ function PersonIcon({ className }: { className?: string }) {
 }
 
 export function AppShell({ workspaceId, workspaceName, title: titleProp, children }: AppShellProps) {
-  const { setUser: setAuthUser } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    apiRequest<{ user?: { id: string; email?: string; firstName?: string; lastName?: string } }>('/api/real/auth/me').then(
-      (result) => {
-        if (result.ok && result.data?.user) setAuthUser(result.data.user);
-      },
-    );
-  }, [setAuthUser]);
   const pageTitleCtx = usePageTitle();
   const title = pageTitleCtx?.title ?? titleProp ?? '보드';
   const searchParams = useSearchParams();
