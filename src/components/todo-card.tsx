@@ -119,15 +119,15 @@ export function TodoCard({ task, sprintEndDate, statusBarColor, className = '' }
       />
       {/* 본문 */}
       <div className="p-3">
-        <p className="m-0 text-[13px] font-medium text-text line-clamp-2 min-h-[2.5rem]">
+        <p className="m-0 min-h-[2.5rem] break-words text-[13px] font-medium text-text line-clamp-2">
           {displayTitle}
         </p>
         {/* 하단: 마감일(급함 아이콘) | 담당자 아바타들 */}
-        <div className="flex items-center justify-between gap-2 mt-3">
-          <div className="flex items-center gap-1.5 min-w-0">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-1.5">
             {dueDateLabel && (
               <span
-                className={`inline-flex items-center gap-1 text-[11px] font-medium ${dueDateColor}`}
+                className={`inline-flex min-w-0 items-center gap-1 text-[11px] font-medium ${dueDateColor}`}
                 title={alertType === 'overdue' ? '마감일 지남' : alertType === 'sprint-ended' ? '스프린트 종료' : undefined}
               >
                 {alertType ? (
@@ -139,14 +139,14 @@ export function TodoCard({ task, sprintEndDate, statusBarColor, className = '' }
                 ) : (
                   <ClockIcon className="size-3.5 shrink-0 opacity-60" />
                 )}
-                <span>{dueDateLabel}</span>
+                <span className="truncate">{dueDateLabel}</span>
               </span>
             )}
           </div>
           {/* 담당자 아바타 (여러명 겹침, 호버 시 리스트) */}
           {people.length > 0 && (
             <div
-              className="relative shrink-0 group"
+              className="relative group shrink-0 self-start sm:self-auto"
               title={people.length === 1 ? people[0].name : undefined}
             >
               <div className={`flex ${people.length > 1 ? '-space-x-2' : ''}`}>

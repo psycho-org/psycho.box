@@ -831,7 +831,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                       key={status}
                       className="flex flex-col min-w-0 rounded-2xl bg-surface border border-line/40 overflow-hidden"
                     >
-                      <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
+                      <div className="flex items-start justify-between gap-2 border-b border-line p-4">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <TaskStatusDot status={status} className="size-2.5" />
@@ -846,7 +846,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                         <button
                           type="button"
                           onClick={() => openCreateModal(status)}
-                          className="p-1.5 rounded-lg hover:bg-accent-dim text-text-dim hover:text-accent-soft shrink-0"
+                          className="shrink-0 rounded-lg p-1.5 text-text-dim hover:bg-accent-dim hover:text-accent-soft"
                           aria-label="태스크 추가"
                         >
                           <PlusIcon className="size-4" />
@@ -904,7 +904,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                   className="flex flex-col min-w-0 rounded-2xl bg-surface border border-line/40 overflow-hidden"
                 >
                   {/* 컬럼 헤더 */}
-                  <div className="flex items-start justify-between gap-2 p-4 border-b border-line">
+                  <div className="flex items-start justify-between gap-2 border-b border-line p-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <TaskStatusDot status={status} className="size-2.5" />
@@ -916,7 +916,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                         </h4>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex shrink-0 items-center gap-1">
                       <button
                         type="button"
                         className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"

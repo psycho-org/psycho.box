@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePageTitle } from '@/components/page-title-context';
 import { apiRequest } from '@/lib/client';
 import {
   applyWorkspaceMemberDisplayNamesToTasks,
@@ -174,6 +175,7 @@ function normalizeSprintGoal(goal: string) {
 
 export default function SprintBoardPage({ params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = use(params);
+  const pageTitleCtx = usePageTitle();
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -224,6 +226,10 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     Boolean(sprintRangeDraft?.start) &&
     Boolean(sprintRangeDraft?.end) &&
     !creatingSprint;
+
+  useEffect(() => {
+    pageTitleCtx?.setTitle('스프린트 보드');
+  }, [pageTitleCtx]);
 
   const loadSprints = useCallback(async (options?: { prioritizeSprintId?: string | null; selectSprintId?: string | null }) => {
     if (!workspaceId) return;
@@ -984,9 +990,9 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
           </div>
         ) : (
           <>
-            <section className="shrink-0 bg-surface border border-line/40 rounded-2xl p-4 shadow-sm sm:p-5">
+            <section className="hidden shrink-0 rounded-2xl border border-line/40 bg-surface p-4 shadow-sm lg:block sm:p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
+                <div className="min-w-0 hidden lg:block">
                   <p className="m-0 text-[12px] font-medium text-text-dim uppercase tracking-[0.14em]">
                     Sprint Board
                   </p>
@@ -995,7 +1001,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                     {selectedSprint.goal?.trim() || '스프린트 목표가 아직 없습니다.'}
                   </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+                <div className="hidden shrink-0 grid-cols-1 gap-3 sm:grid-cols-3 lg:grid">
                   <div className="rounded-2xl border border-line/50 bg-surface-2/60 px-4 py-3">
                     <div className="flex items-center gap-2 text-text-dim text-[12px]">
                       <CalendarIcon className="size-4" />
@@ -1023,7 +1029,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                   </div>
                 </div>
               </div>
-              <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+              <div className="mt-4 hidden gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <div className="flex items-center gap-2 rounded-xl border border-line/50 bg-surface-2/40 px-3 py-2">
                   <input
                     value={projectNameDraft}
@@ -1076,7 +1082,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                 </label>
               </div>
               {moveError ? (
-                <div className="mt-3 rounded-xl border border-red/35 bg-red/10 px-4 py-3 text-[13px] text-red">
+                <div className="mt-3 hidden rounded-xl border border-red/35 bg-red/10 px-4 py-3 text-[13px] text-red lg:block">
                   {moveError}
                 </div>
               ) : null}
@@ -1212,8 +1218,8 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                           : 'border-line/50 bg-surface-2/40 hover:shadow-sm hover:border-line/80'
                                     }`}
                                   >
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="min-w-0">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                      <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
                                           <TaskStatusDot status={task.status} className="size-2.5 shrink-0" />
                                           <h4 className="m-0 text-[14px] font-medium text-text break-all">
@@ -1225,10 +1231,10 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                           <span>마감일 {formatDate(task.dueDate)}</span>
                                         </div>
                                       </div>
-                                      <div className="flex w-full flex-wrap items-start gap-2 shrink-0 sm:w-auto sm:flex-nowrap">
+                                      <div className="flex w-full flex-wrap items-start gap-2 shrink-0 sm:w-auto sm:flex-nowrap sm:justify-end">
                                         <select
                                           aria-label="프로젝트 이동"
-                                          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text sm:flex-none"
+                                          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text sm:max-w-[180px] sm:flex-none"
                                           value={project.projectId}
                                           onClick={(event) => event.stopPropagation()}
                                           onChange={(event) => {
