@@ -826,7 +826,9 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                 <button
                   type="button"
                   onClick={() => setCreateSprintOpen(true)}
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-line/60 bg-surface-2/50 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-text-dim transition-colors hover:bg-surface-2/70 hover:text-accent-soft"
+                  aria-label="스프린트 추가"
+                  title="스프린트 추가"
                 >
                   <PlusIcon className="size-3.5" />
                 </button>
