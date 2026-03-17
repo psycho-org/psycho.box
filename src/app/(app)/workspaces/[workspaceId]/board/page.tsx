@@ -10,8 +10,8 @@ import { TaskCreateModal } from '@/components/task-create-modal';
 import { TaskDetailModal, type TaskDetailModalTask } from '@/components/task-detail-modal';
 import { TaskRoadmap } from '@/components/task-roadmap';
 import { apiRequest } from '@/lib/client';
-import { USER_ID_COOKIE } from '@/lib/cookies';
 import { getErrorMessage } from '@/lib/error-messages';
+import { useAuth } from '@/components/auth-provider';
 import type { TaskStatus } from '@/lib/task-status';
 import { TASK_STATUS_COLORS } from '@/lib/task-status';
 import {
@@ -23,12 +23,6 @@ import {
 } from '@/lib/workspace-member-display';
 
 type BoardView = 'sprint' | 'assignee' | 'my' | 'roadmap';
-
-function getCurrentUserId(): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp(`${USER_ID_COOKIE}=([^;]+)`));
-  return match?.[1]?.trim() ?? null;
-}
 
 interface Task {
   id: string;
@@ -189,6 +183,8 @@ type AssigneeFilterKey = string | 'none';
 
 export default function BoardPage({ params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = use(params);
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -204,7 +200,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const displayParam = searchParams.get('display');
   const display = displayParam === 'list' ? 'list' : displayParam === 'card' ? 'card' : 'kanban';
   const [selectedAssignee, setSelectedAssignee] = useState<AssigneeFilterKey | null>(null);
-  const [currentUserId] = useState<string | null>(() => getCurrentUserId());
+
   const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
