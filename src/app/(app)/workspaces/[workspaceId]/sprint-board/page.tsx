@@ -248,8 +248,8 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       const prioritizedSprintId = options?.prioritizeSprintId;
       const orderedSprintList = prioritizedSprintId
         ? [
-            ...sprintList.filter((sprint) => sprint.sprintId === prioritizedSprintId),
-            ...sprintList.filter((sprint) => sprint.sprintId !== prioritizedSprintId),
+            ...sprintList.filter((sprint: Sprint) => sprint.sprintId === prioritizedSprintId),
+            ...sprintList.filter((sprint: Sprint) => sprint.sprintId !== prioritizedSprintId),
           ]
         : sprintList;
 
@@ -257,7 +257,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       setSelectedSprintId((prev) => {
         const hasExplicitSelection = Boolean(options && 'selectSprintId' in options);
         const preferredSprintId = hasExplicitSelection ? options?.selectSprintId ?? null : prev;
-        const nextSelectedSprintId = orderedSprintList.find((sprint) => sprint.sprintId === preferredSprintId)?.sprintId;
+        const nextSelectedSprintId = orderedSprintList.find((sprint: Sprint) => sprint.sprintId === preferredSprintId)?.sprintId;
         return nextSelectedSprintId ?? orderedSprintList[0]?.sprintId ?? null;
       });
       setError(null);
