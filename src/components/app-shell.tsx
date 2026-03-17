@@ -228,7 +228,7 @@ export function AppShell({ workspaceId, workspaceName, title: titleProp, childre
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="h-14 px-2.5 border-b border-line flex items-center justify-between gap-2 min-w-0">
+        <div className="h-16 px-4 lg:px-5 border-b border-line/60 bg-bg/90 backdrop-blur flex items-center justify-between gap-2 min-w-0">
           <div className="min-w-0 flex-1">
             <WorkspaceSwitcher currentWorkspaceId={workspaceId} currentWorkspaceName={workspaceName} />
           </div>
@@ -325,8 +325,8 @@ export function AppShell({ workspaceId, workspaceName, title: titleProp, childre
         <ThemeToggleFloating />
       </div>
 
-      <main className="flex-1 min-w-0 flex flex-col">
-        <header className="shrink-0 h-14 border-b border-line/80 bg-surface px-4 lg:px-6 flex items-center justify-between gap-2 min-w-0">
+      <main className="flex-1 min-w-0 flex flex-col bg-bg">
+        <header className="shrink-0 h-16 border-b border-line/60 bg-bg/90 px-4 lg:px-5 backdrop-blur flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
@@ -337,12 +337,16 @@ export function AppShell({ workspaceId, workspaceName, title: titleProp, childre
               <MenuIcon className="size-5" />
             </button>
             <div className="min-w-0 flex items-center">
-              <h1 className="m-0 text-base lg:text-lg font-semibold truncate leading-none">{title}</h1>
+              <h1 className="m-0 text-[17px] lg:text-[20px] font-semibold truncate leading-none">{title}</h1>
             </div>
           </div>
           <UserMenu />
         </header>
-        <div className="flex-1 p-4 lg:p-6 overflow-auto min-w-0 bg-surface">{children}</div>
+        <div className="flex-1 overflow-auto min-w-0 px-5 py-5 lg:px-8 lg:py-7 xl:px-10 xl:py-8">
+          <div className="mx-auto flex h-full w-full max-w-[1760px] flex-col">
+            {children}
+          </div>
+        </div>
       </main>
     </div>
   );

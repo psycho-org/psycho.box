@@ -3,7 +3,6 @@
 import { use, useEffect, useMemo, useState } from 'react';
 import { usePageTitle } from '@/components/page-title-context';
 import { Button } from '@/components/ui/button';
-import { ViewModeToggle } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
@@ -65,6 +64,13 @@ function getStatusTone(status?: string) {
   return 'border-line/60 bg-surface-2/60 text-text-dim';
 }
 
+function getStatusCountLabel(status: string) {
+  if (status === 'COMPLETED') return '완료';
+  if (status === 'FAILED') return '실패';
+  if (status === 'RUNNING') return '진행 중';
+  return '대기';
+}
+
 function buildPendingReport(sprint: Sprint | undefined, request: AnalysisRequest): AnalysisReport {
   const createdAt = request.createdAt ?? new Date().toISOString();
   const status = request.status ?? 'PENDING';
@@ -110,7 +116,6 @@ export default function AnalysisPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [resultDisplay, setResultDisplay] = useState<'list' | 'kanban'>('list');
 
   useEffect(() => {
     pageTitleCtx?.setTitle('분석');
@@ -161,6 +166,19 @@ export default function AnalysisPage({
     [reports, selectedReportId],
   );
 
+  const reportStatusSummary = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const report of reports) {
+      counts.set(report.status, (counts.get(report.status) ?? 0) + 1);
+    }
+    return ['PENDING', 'RUNNING', 'COMPLETED', 'FAILED']
+      .map((status) => ({
+        status,
+        count: counts.get(status) ?? 0,
+      }))
+      .filter((item) => item.count > 0);
+  }, [reports]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -204,7 +222,7 @@ export default function AnalysisPage({
         <form onSubmit={handleSubmit} className="flex flex-wrap items-end justify-between gap-3">
           <div className="w-full max-w-[540px]">
             <label htmlFor="sprintId" className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.12em] text-text-dim">
-              Sprint
+              스프린트
             </label>
             <div className="relative">
               <select
@@ -243,26 +261,37 @@ export default function AnalysisPage({
       </section>
 
       <section className="rounded-2xl border border-line/40 bg-surface/90 p-6 shadow-sm">
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mb-4">
           <div>
             <h2 className="m-0 text-base font-semibold">분석 결과</h2>
             <p className="mt-1 mb-0 text-[13px] text-text-dim">
-              스프린트별 리포트를 고르고, 우측 본문 영역에서 상세 내용을 읽을 수 있습니다.
+              요청된 리포트를 최신순으로 확인하고, 우측 본문에서 상세 내용을 읽을 수 있습니다.
             </p>
           </div>
-          <ViewModeToggle value={resultDisplay} onChange={setResultDisplay} />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="overflow-hidden rounded-2xl border border-line/50 bg-surface-2/30">
+        <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-2xl border border-line/50 bg-surface-2/30">
             <div className="border-b border-line/50 px-4 py-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="m-0 text-[14px] font-semibold text-text">리포트 목록</h3>
                 <span className="text-[12px] text-text-dim">{reports.length}개</span>
               </div>
+              {reportStatusSummary.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {reportStatusSummary.map((item) => (
+                    <span
+                      key={item.status}
+                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${getStatusTone(item.status)}`}
+                    >
+                      {getStatusCountLabel(item.status)} {item.count}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            <div className={`max-h-[640px] overflow-y-auto p-3 ${resultDisplay === 'kanban' ? 'grid grid-cols-1 gap-3' : 'space-y-2'}`}>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {!selectedSprint ? (
                 <div className="rounded-xl border border-dashed border-line/60 bg-surface px-4 py-8 text-center text-[13px] text-text-dim">
                   스프린트를 선택하면 리포트 목록이 표시됩니다.
@@ -281,7 +310,7 @@ export default function AnalysisPage({
                       onClick={() => setSelectedReportId(report.id)}
                       className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
                         isSelected
-                          ? 'border-accent/30 bg-accent-dim/30 shadow-sm'
+                          ? 'border-accent/30 bg-accent-dim/30 shadow-sm ring-1 ring-accent/10'
                           : 'border-line/50 bg-surface hover:border-line/80 hover:bg-surface-2/70'
                       }`}
                     >
@@ -315,13 +344,13 @@ export default function AnalysisPage({
               </div>
             ) : (
               <div className="flex h-full min-h-[420px] flex-col">
-                <div className="border-b border-line/50 px-6 py-5">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0">
-                      <p className="m-0 text-[12px] uppercase tracking-[0.12em] text-text-dim">Report</p>
-                      <h3 className="mt-2 mb-0 text-[22px] font-semibold text-text">{selectedReport.title}</h3>
-                      <p className="mt-2 mb-0 text-[13px] text-text-dim">
-                        {selectedSprint.name} · {formatCompactDate(selectedSprint.startDate)} ~{' '}
+                    <div className="border-b border-line/50 px-6 py-5">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <p className="m-0 text-[12px] uppercase tracking-[0.12em] text-text-dim">리포트</p>
+                          <h3 className="mt-2 mb-0 text-[22px] font-semibold text-text">{selectedReport.title}</h3>
+                          <p className="mt-2 mb-0 text-[13px] text-text-dim">
+                            {selectedSprint.name} · {formatCompactDate(selectedSprint.startDate)} ~{' '}
                         {formatCompactDate(selectedSprint.endDate)}
                       </p>
                     </div>
@@ -338,20 +367,25 @@ export default function AnalysisPage({
 
                 <div className="flex-1 overflow-y-auto px-6 py-5">
                   {selectedReport.status === 'FAILED' ? (
-                    <div className="rounded-2xl border border-red/30 bg-red/10 px-5 py-4 text-[13px] text-red">
-                      분석 리포트 생성이 실패했습니다. 다시 요청하거나 백엔드 오류 로그를 확인해 주세요.
+                    <div className="max-w-3xl rounded-2xl border border-red/30 bg-red/10 px-5 py-4 text-[13px] text-red">
+                      분석 리포트 생성이 실패했습니다. 같은 스프린트로 다시 요청하거나 백엔드 오류 로그를 확인해 주세요.
                     </div>
                   ) : selectedReport.status === 'RUNNING' || selectedReport.status === 'PENDING' ? (
-                    <div className="rounded-2xl border border-line/50 bg-surface-2/50 px-5 py-5">
-                      <p className="m-0 text-[15px] font-medium text-text">분석이 진행 중입니다.</p>
-                      <p className="mt-2 mb-0 text-[13px] leading-6 text-text-dim">
-                        분석이 완료되면 이 영역에 리포트 본문이 표시됩니다. 결과 조회 API가 연결되면 자동 갱신 또는 새로고침 액션을
-                        추가할 수 있습니다.
+                    <div className="max-w-3xl rounded-2xl border border-line/50 bg-surface-2/50 px-5 py-5">
+                      <p className="m-0 text-[15px] font-medium text-text">
+                        {selectedReport.status === 'RUNNING' ? '분석이 진행 중입니다.' : '분석 요청이 접수되었습니다.'}
                       </p>
+                      <p className="mt-2 mb-0 text-[13px] leading-6 text-text-dim">
+                        완료되면 이 영역에 본문이 표시됩니다. 현재는 리포트 목록에서 상태 변화를 확인할 수 있습니다.
+                      </p>
+                      <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-line/60 bg-surface px-3 py-1.5 text-[12px] text-text-dim">
+                        <span>요청 시각</span>
+                        <span className="text-text">{formatDateTime(selectedReport.createdAt)}</span>
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-line/50 bg-surface-2/30 px-5 py-5">
-                      <pre className="m-0 whitespace-pre-wrap break-words font-sans text-[14px] leading-7 text-text">
+                      <pre className="m-0 max-w-3xl whitespace-pre-wrap break-words font-sans text-[14px] leading-7 text-text">
                         {selectedReport.content || '분석 본문이 없습니다.'}
                       </pre>
                     </div>

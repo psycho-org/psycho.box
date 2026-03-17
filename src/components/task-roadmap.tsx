@@ -469,7 +469,7 @@ export function TaskRoadmap({
           type="button"
           onClick={() => setMonthOffset((m) => m - 1)}
           className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"
-          aria-label="Previous month"
+          aria-label="이전 달"
         >
           <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="m15 18-6-6 6-6" />
@@ -479,16 +479,16 @@ export function TaskRoadmap({
           type="button"
           onClick={() => setMonthOffset((m) => m + 1)}
           className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"
-          aria-label="Next month"
+          aria-label="다음 달"
         >
           <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="m9 18 6-6-6-6" />
           </svg>
         </button>
         <span className="text-[13px] font-medium text-text">
-          {dateColumns[0]?.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {dateColumns[0]?.date.toLocaleDateString('ko-KR', { month: 'long', year: 'numeric' })}
           {' – '}
-          {dateColumns[dateColumns.length - 1]?.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {dateColumns[dateColumns.length - 1]?.date.toLocaleDateString('ko-KR', { month: 'long', year: 'numeric' })}
         </span>
       </div>
       {/* 본문: 헤더 고정, 세로 스크롤은 우측(타임라인)에만 */}
@@ -496,7 +496,7 @@ export function TaskRoadmap({
         {/* 헤더 행 */}
         <div className="flex shrink-0 border-b border-line bg-surface">
           <div className="flex items-center justify-center px-3 py-2 w-80 shrink-0 min-w-80 border-r border-line bg-surface min-h-[56px]">
-            <p className="m-0 text-[12px] font-semibold text-text-dim uppercase">Title</p>
+            <p className="m-0 text-[12px] font-semibold text-text-dim uppercase">제목</p>
           </div>
           <div
             ref={headerScrollRef}
@@ -583,7 +583,7 @@ export function TaskRoadmap({
               <>
                 <div className="px-3 py-2 bg-surface border-t-2 border-line">
                   <p className="m-0 text-[11px] font-semibold text-text-dim uppercase">
-                    Unscheduled ({unscheduledTasks.length})
+                    미지정 일정 ({unscheduledTasks.length})
                   </p>
                 </div>
                 {unscheduledTasks.map((task, idx) => {
