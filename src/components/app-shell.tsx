@@ -35,27 +35,6 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-function BoardIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect width="7" height="7" x="3" y="3" rx="1" />
-      <rect width="7" height="7" x="14" y="3" rx="1" />
-      <rect width="7" height="7" x="14" y="14" rx="1" />
-      <rect width="7" height="7" x="3" y="14" rx="1" />
-    </svg>
-  );
-}
-
 function UsersIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -113,29 +92,6 @@ function RoadmapIcon({ className }: { className?: string }) {
       <path d="M7 16v-4" />
       <path d="M12 16v-8" />
       <path d="M17 16V7" />
-    </svg>
-  );
-}
-
-function ListIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="8" y1="6" x2="21" y2="6"></line>
-      <line x1="8" y1="12" x2="21" y2="12"></line>
-      <line x1="8" y1="18" x2="21" y2="18"></line>
-      <line x1="3" y1="6" x2="3.01" y2="6"></line>
-      <line x1="3" y1="12" x2="3.01" y2="12"></line>
-      <line x1="3" y1="18" x2="3.01" y2="18"></line>
     </svg>
   );
 }
@@ -249,7 +205,6 @@ export function AppShell({ workspaceId, workspaceName, title: titleProp, childre
   const boardViewDisplay = boardDisplay === 'list' ? 'list' : boardDisplay === 'card' ? 'card' : 'kanban';
 
   const boardNavItems = [
-    { view: 'sprint', label: '태스크', icon: BoardIcon },
     { view: 'assignee', label: '담당자', icon: PersonIcon },
     { view: 'my', label: '나의 테스크', icon: UserCheckIcon },
     { view: 'roadmap', label: '로드맵', icon: RoadmapIcon },
@@ -287,6 +242,19 @@ export function AppShell({ workspaceId, workspaceName, title: titleProp, childre
           </button>
         </div>
         <nav className="p-2.5 flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto">
+          <Link
+            href={`${basePath}/sprint-board`}
+            onClick={closeMobile}
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-200 ${
+              pathname === `${basePath}/sprint-board`
+                ? 'bg-accent-dim/80 text-accent-soft'
+                : 'text-text-soft hover:bg-surface-2/80 hover:text-text'
+            }`}
+          >
+            <SprintBoardIcon className="shrink-0 text-text-dim" />
+            스프린트 보드
+          </Link>
+
           {/* 스프린트, 담당자, 나의 테스크, 로드맵 */}
           {boardNavItems.map(({ view, label, icon: Icon }) => (
             <Link
@@ -303,33 +271,6 @@ export function AppShell({ workspaceId, workspaceName, title: titleProp, childre
               {label}
             </Link>
           ))}
-
-          {/* Sprints Viewer (List) */}
-          <Link
-            href={`${basePath}/sprint-board`}
-            onClick={closeMobile}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-200 ${
-              pathname === `${basePath}/sprint-board`
-                ? 'bg-accent-dim/80 text-accent-soft'
-                : 'text-text-soft hover:bg-surface-2/80 hover:text-text'
-            }`}
-          >
-            <SprintBoardIcon className="shrink-0 text-text-dim" />
-            스프린트 보드
-          </Link>
-
-          <Link
-            href={`${basePath}/sprints`}
-            onClick={closeMobile}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-200 ${
-              pathname === `${basePath}/sprints`
-                ? 'bg-accent-dim/80 text-accent-soft'
-                : 'text-text-soft hover:bg-surface-2/80 hover:text-text'
-            }`}
-          >
-            <ListIcon className="shrink-0 text-text-dim" />
-            스프린트
-          </Link>
 
           {/* Analysis */}
           <Link

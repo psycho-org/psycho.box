@@ -104,6 +104,15 @@ function TrashIcon({ className }: { className?: string }) {
   );
 }
 
+function EditIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
 function PanelToggleIcon({ className, collapsed }: { className?: string; collapsed: boolean }) {
   return (
     <svg
@@ -854,12 +863,29 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                         </div>
                       </div>
                     </button>
-                    <div className="shrink-0 self-end px-3 pb-2.5">
+                    <div className="flex shrink-0 items-center gap-1 self-end px-3 pb-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSprintId(sprint.sprintId);
+                          setEditSprintOpen(true);
+                        }}
+                        disabled={updatingSprint}
+                        className={`inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-all hover:bg-surface/70 hover:text-text disabled:cursor-not-allowed disabled:opacity-50 ${
+                          selectedSprintId === sprint.sprintId
+                            ? 'opacity-100'
+                            : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
+                        }`}
+                        aria-label="스프린트 수정"
+                        title="스프린트 수정"
+                      >
+                        <EditIcon className="size-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => setPendingDeleteSprint(sprint)}
                         disabled={deletingSprintId === sprint.sprintId}
-                        className={`inline-flex size-8 items-center justify-center rounded-lg bg-surface/92 text-text-dim shadow-sm backdrop-blur transition-all hover:bg-surface hover:text-red disabled:cursor-not-allowed disabled:opacity-50 ${
+                        className={`inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-all hover:bg-surface/70 hover:text-red disabled:cursor-not-allowed disabled:opacity-50 ${
                           selectedSprintId === sprint.sprintId
                             ? 'opacity-100'
                             : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
