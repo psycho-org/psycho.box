@@ -843,59 +843,60 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                 sprints.map((sprint) => (
                   <div key={sprint.sprintId} className="group">
                     <div
-                      className={`flex items-end gap-2 rounded-xl transition-colors ${
+                      className={`rounded-xl transition-colors ${
                         selectedSprintId === sprint.sprintId
                           ? 'bg-accent-dim/80 text-accent-soft border border-accent/20'
                           : 'text-text hover:bg-surface-2 border border-transparent'
                       }`}
                     >
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSprintId(sprint.sprintId)}
-                      className="min-w-0 flex-1 text-left px-3 py-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-medium text-[14px] truncate">{sprint.name}</div>
-                        <div className="mt-2 text-[12px] opacity-70">
-                          <span className="truncate">
-                            {formatCompactDate(sprint.startDate)} ~ {formatCompactDate(sprint.endDate)}
-                          </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSprintId(sprint.sprintId)}
+                        className="w-full min-w-0 text-left px-3 pt-3 pb-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-[14px]">{sprint.name}</div>
+                          <div className="mt-2 text-[12px] opacity-70">
+                            <span className="truncate">
+                              {formatCompactDate(sprint.startDate)} ~ {formatCompactDate(sprint.endDate)}
+                            </span>
+                          </div>
                         </div>
+                      </button>
+
+                      <div className="flex items-center justify-end gap-1 px-3 pb-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSprintId(sprint.sprintId);
+                            setEditSprintOpen(true);
+                          }}
+                          disabled={updatingSprint}
+                          className={`inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-all hover:bg-surface/70 hover:text-text disabled:cursor-not-allowed disabled:opacity-50 ${
+                            selectedSprintId === sprint.sprintId
+                              ? 'opacity-100'
+                              : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
+                          }`}
+                          aria-label="스프린트 수정"
+                          title="스프린트 수정"
+                        >
+                          <EditIcon className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingDeleteSprint(sprint)}
+                          disabled={deletingSprintId === sprint.sprintId}
+                          className={`inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-all hover:bg-surface/70 hover:text-red disabled:cursor-not-allowed disabled:opacity-50 ${
+                            selectedSprintId === sprint.sprintId
+                              ? 'opacity-100'
+                              : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
+                          }`}
+                          aria-label="스프린트 삭제"
+                          title="스프린트 삭제"
+                        >
+                          <TrashIcon className="size-4" />
+                        </button>
                       </div>
-                    </button>
-                    <div className="flex shrink-0 items-center gap-1 self-end px-3 pb-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedSprintId(sprint.sprintId);
-                          setEditSprintOpen(true);
-                        }}
-                        disabled={updatingSprint}
-                        className={`inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-all hover:bg-surface/70 hover:text-text disabled:cursor-not-allowed disabled:opacity-50 ${
-                          selectedSprintId === sprint.sprintId
-                            ? 'opacity-100'
-                            : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
-                        }`}
-                        aria-label="스프린트 수정"
-                        title="스프린트 수정"
-                      >
-                        <EditIcon className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPendingDeleteSprint(sprint)}
-                        disabled={deletingSprintId === sprint.sprintId}
-                        className={`inline-flex size-8 items-center justify-center rounded-lg text-text-dim transition-all hover:bg-surface/70 hover:text-red disabled:cursor-not-allowed disabled:opacity-50 ${
-                          selectedSprintId === sprint.sprintId
-                            ? 'opacity-100'
-                            : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
-                        }`}
-                        aria-label="스프린트 삭제"
-                        title="스프린트 삭제"
-                      >
-                        <TrashIcon className="size-4" />
-                      </button>
-                    </div>
                     </div>
                   </div>
                 ))
@@ -1074,7 +1075,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                               <button
                                 type="button"
                                 onClick={() => setCreateTaskProjectId(project.projectId)}
-                                className="inline-flex size-8 items-center justify-center rounded-lg border border-line/60 bg-surface-2/50 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
+                                className="inline-flex size-8 items-center justify-center rounded-lg bg-surface-2/50 text-[12px] font-medium text-text transition-colors hover:text-accent-soft"
                               >
                                 <PlusIcon className="size-3.5" />
                               </button>
@@ -1088,7 +1089,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                   })
                                 }
                                 disabled={deletingProjectId === project.projectId}
-                                className="inline-flex size-8 items-center justify-center rounded-lg border border-line/60 bg-surface-2/50 text-text-dim transition-colors hover:border-red/40 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
+                                className="inline-flex size-8 items-center justify-center rounded-lg bg-surface-2/50 text-text-dim transition-colors hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
                                 aria-label="프로젝트 삭제"
                                 title="프로젝트 삭제"
                               >
@@ -1175,12 +1176,12 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                           type="button"
                                           aria-label="태스크 삭제"
                                           title="태스크 삭제"
-                                          disabled={deletingTaskId === task.id}
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            setPendingDeleteTask({ id: task.id, title: task.title });
-                                          }}
-                                          className="rounded-lg border border-line/70 bg-surface px-2 py-1.5 text-text-dim transition-colors hover:border-red/40 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
+                                        disabled={deletingTaskId === task.id}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setPendingDeleteTask({ id: task.id, title: task.title });
+                                        }}
+                                          className="rounded-lg bg-surface px-2 py-1.5 text-text-dim transition-colors hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                           <TrashIcon className="size-4" />
                                         </button>
