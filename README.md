@@ -6,11 +6,26 @@ docs/ 내 PLAN 문서 기반 레이아웃·라우팅 구조.
 ## 실행
 
 ```bash
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
 http://localhost:3000
+
+## 환경 변수
+
+`psycho.box`는 브라우저가 아니라 Next.js 서버에서 `psycho.pizza` API를 호출합니다.
+AWS 배포 시 아래 값은 인프라에서 주입해야 합니다.
+
+```bash
+BACKEND_API_URL=https://api.example.com
+BACKEND_REFRESH_COOKIE_NAME=refresh_token
+```
+
+- 로컬 개발 기본값은 `.env.example` 기준입니다.
+- 프로덕션에서는 `BACKEND_API_URL`, `BACKEND_REFRESH_COOKIE_NAME`이 없으면 서버가 바로 실패하도록 했습니다.
+- EC2/Systemd, CodeDeploy, ECS, Elastic Beanstalk 어느 쪽이든 애플리케이션 런타임 환경변수로 넣으면 됩니다.
 
 ## 구조
 

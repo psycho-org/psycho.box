@@ -70,10 +70,37 @@ function StackIcon({ className }: { className?: string }) {
   );
 }
 
+function SprintIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 7h16" />
+      <path d="M4 12h10" />
+      <path d="M4 17h13" />
+      <circle cx="18" cy="12" r="2" />
+    </svg>
+  );
+}
+
 function PlusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function PanelToggleIcon({ className, collapsed }: { className?: string; collapsed: boolean }) {
+  return (
+    <svg
+      className={`${className} transition-transform ${collapsed ? 'rotate-180' : ''}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m15 18-6-6 6-6" />
     </svg>
   );
 }
@@ -111,6 +138,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [creatingProject, setCreatingProject] = useState(false);
+  const [sprintPanelCollapsed, setSprintPanelCollapsed] = useState(false);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -388,41 +416,74 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     openDetailModal(currentTaskList[nextIndex]);
   }
 
+  const toggleLeftPosition = sprintPanelCollapsed ? 'left-[4rem]' : 'left-[18rem]';
+
   return (
-    <div className="flex gap-6 h-full min-h-0">
-      <aside className="w-72 shrink-0 flex flex-col bg-surface border border-line/40 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-line/60">
-          <h2 className="text-sm font-semibold text-text m-0">스프린트 보드</h2>
-          <p className="m-0 mt-1 text-[12px] text-text-dim">스프린트를 고르면 프로젝트 묶음을 한 화면에서 편집합니다.</p>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
-          {loading ? (
-            <p className="text-text-soft text-[13px] px-2 py-2">로딩 중...</p>
-          ) : error && sprints.length === 0 ? (
-            <p className="text-red text-[13px] px-2 py-2">{error}</p>
-          ) : sprints.length === 0 ? (
-            <p className="text-text-soft text-[13px] px-2 py-2">스프린트가 없습니다.</p>
-          ) : (
-            sprints.map((sprint) => (
-              <button
-                key={sprint.sprintId}
-                type="button"
-                onClick={() => setSelectedSprintId(sprint.sprintId)}
-                className={`w-full text-left px-3 py-3 rounded-xl transition-colors ${
-                  selectedSprintId === sprint.sprintId
-                    ? 'bg-accent-dim/80 text-accent-soft border border-accent/20'
-                    : 'text-text hover:bg-surface-2 border border-transparent'
-                }`}
-              >
-                <div className="font-medium text-[14px] truncate">{sprint.name}</div>
-                <div className="text-[12px] opacity-70 mt-1 flex justify-between">
-                  <span>{formatDate(sprint.startDate)}</span>
-                  <span>{formatDate(sprint.endDate)}</span>
+    <div className="relative flex gap-0 h-full min-h-0">
+      <aside
+        className={`shrink-0 flex flex-col bg-surface border border-line/40 rounded-2xl overflow-hidden shadow-sm transition-all duration-200 ${
+          sprintPanelCollapsed ? 'w-16 opacity-100' : 'w-72 opacity-100'
+        }`}
+      >
+        {sprintPanelCollapsed ? (
+          <div className="flex h-full flex-col items-center justify-between py-4">
+            <div className="flex flex-col items-center gap-3">
+              <div className="grid size-10 place-items-center rounded-2xl bg-accent-dim/30 text-accent">
+                <SprintIcon className="size-5" />
+              </div>
+              <div className="rounded-full border border-line/60 bg-surface-2/60 px-2 py-1 text-[11px] text-text-dim">
+                {sprints.length}
+              </div>
+            </div>
+            <div className="px-2">
+              <div className="rounded-2xl border border-line/60 bg-surface-2/50 px-2 py-2 text-center">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim">Now</div>
+                <div className="mt-1 line-clamp-4 break-words text-[11px] font-medium text-text">
+                  {selectedSprint?.name ?? 'Sprint'}
                 </div>
-              </button>
-            ))
-          )}
-        </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="p-4 border-b border-line/60">
+              <div className="flex items-start gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-text m-0">스프린트 보드</h2>
+                  <p className="m-0 mt-1 text-[12px] text-text-dim">스프린트를 고르면 프로젝트 묶음을 한 화면에서 편집합니다.</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
+              {loading ? (
+                <p className="text-text-soft text-[13px] px-2 py-2">로딩 중...</p>
+              ) : error && sprints.length === 0 ? (
+                <p className="text-red text-[13px] px-2 py-2">{error}</p>
+              ) : sprints.length === 0 ? (
+                <p className="text-text-soft text-[13px] px-2 py-2">스프린트가 없습니다.</p>
+              ) : (
+                sprints.map((sprint) => (
+                  <button
+                    key={sprint.sprintId}
+                    type="button"
+                    onClick={() => setSelectedSprintId(sprint.sprintId)}
+                    className={`w-full text-left px-3 py-3 rounded-xl transition-colors ${
+                      selectedSprintId === sprint.sprintId
+                        ? 'bg-accent-dim/80 text-accent-soft border border-accent/20'
+                        : 'text-text hover:bg-surface-2 border border-transparent'
+                    }`}
+                  >
+                    <div className="font-medium text-[14px] truncate">{sprint.name}</div>
+                    <div className="text-[12px] opacity-70 mt-1 flex justify-between">
+                      <span>{formatDate(sprint.startDate)}</span>
+                      <span>{formatDate(sprint.endDate)}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col gap-4 overflow-hidden">
@@ -671,6 +732,15 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
           </>
         )}
       </main>
+      <button
+        type="button"
+        onClick={() => setSprintPanelCollapsed((prev) => !prev)}
+        className={`absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 group flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-all duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text ${toggleLeftPosition}`}
+        aria-label={sprintPanelCollapsed ? '스프린트 패널 펼치기' : '스프린트 패널 접기'}
+        title={sprintPanelCollapsed ? '스프린트 패널 펼치기' : '스프린트 패널 접기'}
+      >
+        <PanelToggleIcon className="size-3.5 group-hover:scale-110" collapsed={sprintPanelCollapsed} />
+      </button>
       <TaskDetailModal
         open={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
