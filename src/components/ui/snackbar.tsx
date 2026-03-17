@@ -8,6 +8,7 @@ export interface SnackbarProps {
   message: string;
   onClose: () => void;
   autoHideDuration?: number;
+  variant?: 'default' | 'success' | 'error';
 }
 
 function CloseIcon({ className }: { className?: string }) {
@@ -18,7 +19,13 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
-export function Snackbar({ open, message, onClose, autoHideDuration = 4000 }: SnackbarProps) {
+export function Snackbar({
+  open,
+  message,
+  onClose,
+  autoHideDuration = 4000,
+  variant = 'default',
+}: SnackbarProps) {
   useEffect(() => {
     if (!open || autoHideDuration <= 0) return;
     const timer = setTimeout(onClose, autoHideDuration);
@@ -31,9 +38,21 @@ export function Snackbar({ open, message, onClose, autoHideDuration = 4000 }: Sn
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-2 border border-line shadow-lg min-w-[280px] max-w-[90vw]"
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg min-w-[280px] max-w-[90vw] ${
+        variant === 'success'
+          ? 'bg-green/10 border border-green/35'
+          : variant === 'error'
+            ? 'bg-red/10 border border-red/35'
+            : 'bg-surface-2 border border-line'
+      }`}
     >
-      <span className="flex-1 text-[14px] text-text">{message}</span>
+      <span
+        className={`flex-1 text-[14px] ${
+          variant === 'success' ? 'text-green' : variant === 'error' ? 'text-red' : 'text-text'
+        }`}
+      >
+        {message}
+      </span>
       <button
         type="button"
         onClick={onClose}
