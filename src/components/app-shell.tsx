@@ -10,6 +10,7 @@ import { ThemeToggleFloating } from '@/components/theme-toggle-floating';
 import { VIEW_TOGGLE_PAGES } from '@/lib/view-toggle-config';
 import { usePageTitle } from '@/components/page-title-context';
 import { useWorkspace } from '@/components/workspace-provider';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 function MenuIcon({ className }: { className?: string }) {
   return (
@@ -333,7 +334,9 @@ export function AppShell({ title: titleProp, children }: AppShellProps) {
         </header>
         <div className="flex-1 overflow-auto min-w-0 px-5 py-5 lg:px-8 lg:py-7 xl:px-10 xl:py-8">
           <div className="mx-auto flex h-full w-full max-w-[1760px] flex-col">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
         </div>
       </main>
