@@ -149,7 +149,9 @@ export function DatePicker({
   const [viewYear, setViewYear] = useState(() => initialViewDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(() => initialViewDate.getMonth());
   const [rangeStart, setRangeStart] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [draftRange, setDraftRange] = useState<{ start: string; end: string } | null>(
+    mode === 'range' && value ? (value as { start: string; end: string }) : null,
+  );
   const [popupStyle, setPopupStyle] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -212,6 +214,8 @@ export function DatePicker({
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node;
       if (ref.current?.contains(target) || popupRef.current?.contains(target)) return;
+      setRangeStart(null);
+      setDraftRange(mode === 'range' && value ? (value as { start: string; end: string }) : null);
       setOpen(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -219,17 +223,14 @@ export function DatePicker({
   }, [open, popupPlacement, mode, value, minDate, maxDate]);
 
   useEffect(() => {
-    if (mode !== 'range' || !isDragging) return;
-    function handleMouseUp() {
-      setIsDragging(false);
-      setRangeStart(null);
-    }
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => document.removeEventListener('mouseup', handleMouseUp);
-  }, [mode, isDragging]);
+    if (mode !== 'range') return;
+    if (rangeStart) return;
+    setDraftRange(value ? (value as { start: string; end: string }) : null);
+  }, [mode, value, rangeStart]);
 
   const days = getDaysInMonth(viewYear, viewMonth);
-  const display = formatDisplay(mode, value);
+  const displayValue = mode === 'range' ? draftRange : value;
+  const display = formatDisplay(mode, displayValue);
   const todayStr = toYMD(new Date());
   const todayDisabled = isOutsideAllowedRange(todayStr, minDate, maxDate);
 
@@ -269,13 +270,15 @@ export function DatePicker({
     if (mode === 'range') {
       if (!rangeStart) {
         setRangeStart(dateStr);
+        setDraftRange({ start: dateStr, end: dateStr });
         onChange({ start: dateStr, end: dateStr });
         return;
       }
       const [s, e] = [rangeStart, dateStr].sort();
+      setDraftRange({ start: s, end: e });
       onChange({ start: s, end: e });
       setRangeStart(null);
-      setOpen(false);
+      requestAnimationFrame(() => setOpen(false));
       return;
     }
 
@@ -287,21 +290,12 @@ export function DatePicker({
     }
   }
 
-  function handleDateMouseDown(dateStr: string) {
-    if (mode !== 'range' || disabled) return;
-    if (minDate && dateStr < minDate) return;
-    if (maxDate && dateStr > maxDate) return;
-    setRangeStart(dateStr);
-    setIsDragging(true);
-    onChange({ start: dateStr, end: dateStr });
-  }
-
   function handleDateMouseEnter(dateStr: string) {
     if (mode !== 'range' || !rangeStart || disabled) return;
     if (minDate && dateStr < minDate) return;
     if (maxDate && dateStr > maxDate) return;
     const [s, e] = [rangeStart, dateStr].sort();
-    onChange({ start: s, end: e });
+    setDraftRange({ start: s, end: e });
   }
 
   function handleClear() {
@@ -309,6 +303,7 @@ export function DatePicker({
     if (mode === 'range') onChange(null);
     if (mode === 'multiple') onChange([]);
     setRangeStart(null);
+    setDraftRange(null);
   }
 
   const isCurrentMonth = (d: Date) => d.getMonth() === viewMonth;
@@ -399,8 +394,8 @@ export function DatePicker({
                 const dateStr = toYMD(d);
                 const current = isCurrentMonth(d);
                 const isDisabledDate = isOutsideAllowedRange(dateStr, minDate, maxDate);
-                const selected = isSelected(dateStr, mode, value);
-                const rangeEdge = mode === 'range' && isStartOrEnd(dateStr, value);
+                const selected = isSelected(dateStr, mode, displayValue);
+                const rangeEdge = mode === 'range' && isStartOrEnd(dateStr, displayValue);
                 const inRange = mode === 'range' && selected && !rangeEdge;
                 const isToday = dateStr === todayStr;
 
@@ -410,7 +405,6 @@ export function DatePicker({
                     type="button"
                     disabled={isDisabledDate}
                     onClick={() => handleDateClick(dateStr)}
-                    onMouseDown={() => handleDateMouseDown(dateStr)}
                     onMouseEnter={() => handleDateMouseEnter(dateStr)}
                     className={`
                       aspect-square rounded-xl text-[13px] font-medium transition-all duration-150

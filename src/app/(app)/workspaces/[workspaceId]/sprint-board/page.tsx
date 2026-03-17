@@ -9,7 +9,8 @@ import {
   type WorkspaceMemberDisplayNameMap,
   type WorkspaceMemberDisplaySource,
 } from '@/lib/workspace-member-display';
-import { TaskStatusDot } from '@/components/ui';
+import { Button, DatePicker, TaskStatusDot } from '@/components/ui';
+import { Dialog } from '@/components/ui/dialog';
 import { Snackbar } from '@/components/ui/snackbar';
 import { TaskCreateModal } from '@/components/task-create-modal';
 import { DeleteReasonDialog } from '@/components/delete-reason-dialog';
@@ -128,6 +129,11 @@ function isDone(status: TaskStatus) {
   return DONE_STATUSES.includes(status);
 }
 
+interface SprintRangeValue {
+  start: string;
+  end: string;
+}
+
 export default function SprintBoardPage({ params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = use(params);
   const [sprints, setSprints] = useState<Sprint[]>([]);
@@ -152,30 +158,58 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [creatingProject, setCreatingProject] = useState(false);
+  const [createSprintOpen, setCreateSprintOpen] = useState(false);
+  const [sprintNameDraft, setSprintNameDraft] = useState('');
+  const [sprintGoalDraft, setSprintGoalDraft] = useState('');
+  const [sprintRangeDraft, setSprintRangeDraft] = useState<SprintRangeValue | null>(null);
+  const [creatingSprint, setCreatingSprint] = useState(false);
   const [createTaskProjectId, setCreateTaskProjectId] = useState<string | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [pendingDeleteTask, setPendingDeleteTask] = useState<{ id: string; title: string } | null>(null);
   const [sprintPanelCollapsed, setSprintPanelCollapsed] = useState(false);
   const canCreateProject = Boolean(selectedSprintId) && Boolean(projectNameDraft.trim()) && !creatingProject;
+  const canCreateSprint =
+    Boolean(sprintNameDraft.trim()) &&
+    Boolean(sprintRangeDraft?.start) &&
+    Boolean(sprintRangeDraft?.end) &&
+    !creatingSprint;
+
+  const loadSprints = useCallback(async (options?: { prioritizeSprintId?: string | null; selectSprintId?: string | null }) => {
+    if (!workspaceId) return;
+
+    setLoading(true);
+
+    try {
+      const result = await apiRequest<{ data: Sprint[] }>(`/api/real/workspaces/${workspaceId}/sprints?page=0&size=100`);
+
+      if (!result.ok) {
+        setError(getErrorMessage({ code: result.code, message: result.message, status: result.status }));
+        return;
+      }
+
+      const sprintList = Array.isArray(result.data) ? result.data : (result.data as any)?.content || [];
+      const prioritizedSprintId = options?.prioritizeSprintId;
+      const orderedSprintList = prioritizedSprintId
+        ? [
+            ...sprintList.filter((sprint) => sprint.sprintId === prioritizedSprintId),
+            ...sprintList.filter((sprint) => sprint.sprintId !== prioritizedSprintId),
+          ]
+        : sprintList;
+
+      setSprints(orderedSprintList);
+      setSelectedSprintId((prev) => options?.selectSprintId ?? prev ?? orderedSprintList[0]?.sprintId ?? null);
+      setError(null);
+    } catch {
+      setError('스프린트를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId]);
 
   useEffect(() => {
     if (!workspaceId) return;
-    setLoading(true);
-    apiRequest<{ data: Sprint[] }>(`/api/real/workspaces/${workspaceId}/sprints?page=0&size=100`)
-      .then((result) => {
-        if (!result.ok) {
-          setError(result.message ?? '스프린트를 불러오지 못했습니다.');
-          return;
-        }
-
-        const list = Array.isArray(result.data) ? result.data : (result.data as any)?.content || [];
-        setSprints(list);
-        setSelectedSprintId((prev) => prev ?? list[0]?.sprintId ?? null);
-        setError(null);
-      })
-      .catch(() => setError('스프린트를 불러오는 중 오류가 발생했습니다.'))
-      .finally(() => setLoading(false));
-  }, [workspaceId]);
+    void loadSprints();
+  }, [workspaceId, loadSprints]);
 
   const showSnackbar = useCallback(
     (message: string, variant: 'default' | 'success' | 'error') => {
@@ -185,6 +219,56 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     },
     [],
   );
+
+  useEffect(() => {
+    if (!createSprintOpen && !creatingSprint) {
+      setSprintNameDraft('');
+      setSprintGoalDraft('');
+      setSprintRangeDraft(null);
+    }
+  }, [createSprintOpen, creatingSprint]);
+
+  async function handleCreateSprint() {
+    const name = sprintNameDraft.trim();
+    const startDate = sprintRangeDraft?.start;
+    const endDate = sprintRangeDraft?.end;
+    if (!name || !startDate || !endDate || creatingSprint) return;
+
+    setCreatingSprint(true);
+
+    try {
+      const result = await apiRequest<{ sprintId?: string }>(
+        `/api/real/workspaces/${workspaceId}/sprints`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            goal: sprintGoalDraft.trim() || null,
+            startDate: `${startDate}T00:00:00.000Z`,
+            endDate: `${endDate}T23:59:59.000Z`,
+          }),
+        },
+      );
+
+      if (!result.ok) {
+        showSnackbar(
+          getErrorMessage({ code: result.code, message: result.message, status: result.status }),
+          'error',
+        );
+        return;
+      }
+
+      setCreateSprintOpen(false);
+      await loadSprints({
+        prioritizeSprintId: result.data?.sprintId ?? null,
+        selectSprintId: result.data?.sprintId ?? null,
+      });
+    } catch {
+      showSnackbar('스프린트 생성 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setCreatingSprint(false);
+    }
+  }
 
   const loadBoard = useCallback(async (options?: { prioritizeProjectId?: string | null }) => {
     if (!workspaceId || !selectedSprintId) {
@@ -202,7 +286,13 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       );
 
       if (!projectResult.ok) {
-        setError(projectResult.message ?? '프로젝트를 불러오지 못했습니다.');
+        setError(
+          getErrorMessage({
+            code: projectResult.code,
+            message: projectResult.message,
+            status: projectResult.status,
+          }),
+        );
         return;
       }
 
@@ -373,7 +463,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
 
     if (!result.ok) {
       setTasksByProject(previousState);
-      const message = result.message ?? '태스크 이동에 실패했습니다.';
+      const message = getErrorMessage({ code: result.code, message: result.message, status: result.status });
       setMoveError(message);
       showSnackbar(message, 'error');
     } else {
@@ -406,7 +496,10 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       );
 
       if (!result.ok) {
-        showSnackbar(result.message ?? '프로젝트 생성에 실패했습니다.', 'error');
+        showSnackbar(
+          getErrorMessage({ code: result.code, message: result.message, status: result.status }),
+          'error',
+        );
         return;
       }
 
@@ -520,11 +613,19 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
         ) : (
           <>
             <div className="p-4 border-b border-line/60">
-              <div className="flex items-start gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="text-sm font-semibold text-text m-0">스프린트 보드</h2>
                   <p className="m-0 mt-1 text-[12px] text-text-dim">스프린트를 고르면 프로젝트 묶음을 한 화면에서 편집합니다.</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setCreateSprintOpen(true)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line/60 bg-surface-2/50 px-3 py-1.5 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
+                >
+                  <PlusIcon className="size-3.5" />
+                  추가
+                </button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
@@ -893,6 +994,70 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
             : '삭제 사유를 입력해 주세요.'
         }
       />
+      <Dialog open={createSprintOpen} onClose={() => !creatingSprint && setCreateSprintOpen(false)} title="스프린트 추가">
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleCreateSprint();
+          }}
+        >
+          <div>
+            <label htmlFor="sprint-name" className="block text-[13px] font-medium text-text-soft mb-1.5">
+              이름 <span className="text-red">*</span>
+            </label>
+            <input
+              id="sprint-name"
+              type="text"
+              value={sprintNameDraft}
+              onChange={(event) => setSprintNameDraft(event.target.value)}
+              placeholder="스프린트 이름"
+              className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              disabled={creatingSprint}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label htmlFor="sprint-goal" className="block text-[13px] font-medium text-text-soft mb-1.5">
+              목표
+            </label>
+            <textarea
+              id="sprint-goal"
+              value={sprintGoalDraft}
+              onChange={(event) => setSprintGoalDraft(event.target.value)}
+              placeholder="스프린트 목표 (선택)"
+              rows={3}
+              className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none"
+              disabled={creatingSprint}
+            />
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-text-soft mb-1.5">
+              기간 <span className="text-red">*</span>
+            </label>
+            <DatePicker
+              mode="range"
+              value={sprintRangeDraft}
+              onChange={(value) => setSprintRangeDraft(value as SprintRangeValue | null)}
+              placeholder="스프린트 기간 선택"
+              disabled={creatingSprint}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setCreateSprintOpen(false)}
+              disabled={creatingSprint}
+            >
+              취소
+            </Button>
+            <Button type="submit" loading={creatingSprint} disabled={!canCreateSprint}>
+              추가
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }
