@@ -326,7 +326,7 @@ export function AppShell({ workspaceId, workspaceName, title: titleProp, childre
       </div>
 
       <main className="flex-1 min-w-0 flex flex-col bg-bg">
-        <header className="shrink-0 h-16 border-b border-line/60 bg-bg/90 px-4 lg:px-5 backdrop-blur flex items-center justify-between gap-3 min-w-0">
+        <header className="relative z-40 shrink-0 h-16 border-b border-line/60 bg-bg/90 px-4 lg:px-5 backdrop-blur flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"

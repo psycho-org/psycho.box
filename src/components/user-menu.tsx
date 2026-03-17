@@ -129,7 +129,7 @@ export function UserMenu() {
   }
 
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div ref={ref} className="relative z-[70] shrink-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -149,7 +149,7 @@ export function UserMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 py-1.5 bg-surface-2 border border-line rounded-[10px] shadow-lg z-50 min-w-[180px] overflow-hidden">
+        <div className="absolute right-0 top-full z-[80] mt-1 min-w-[180px] overflow-hidden rounded-[10px] border border-line bg-surface-2 py-1.5 shadow-lg">
           <Link
             href="/account"
             onClick={() => setOpen(false)}
