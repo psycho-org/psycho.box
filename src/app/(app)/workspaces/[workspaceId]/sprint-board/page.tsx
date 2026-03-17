@@ -141,6 +141,15 @@ function formatDate(value?: string | null) {
   return new Date(value).toLocaleDateString('ko-KR');
 }
 
+function formatCompactDate(value?: string | null) {
+  if (!value) return '-';
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}.${month}.${day}`;
+}
+
 function isDone(status: TaskStatus) {
   return DONE_STATUSES.includes(status);
 }
@@ -181,14 +190,20 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   const [creatingProject, setCreatingProject] = useState(false);
   const [createSprintOpen, setCreateSprintOpen] = useState(false);
   const [editSprintOpen, setEditSprintOpen] = useState(false);
-  const [deleteSprintOpen, setDeleteSprintOpen] = useState(false);
   const [sprintNameDraft, setSprintNameDraft] = useState('');
   const [sprintGoalDraft, setSprintGoalDraft] = useState('');
   const [sprintRangeDraft, setSprintRangeDraft] = useState<SprintRangeValue | null>(null);
   const [creatingSprint, setCreatingSprint] = useState(false);
   const [updatingSprint, setUpdatingSprint] = useState(false);
-  const [deletingSprint, setDeletingSprint] = useState(false);
+  const [pendingDeleteSprint, setPendingDeleteSprint] = useState<Sprint | null>(null);
+  const [deletingSprintId, setDeletingSprintId] = useState<string | null>(null);
   const [createTaskProjectId, setCreateTaskProjectId] = useState<string | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [pendingDeleteProject, setPendingDeleteProject] = useState<{
+    projectId: string;
+    name: string;
+    taskCount: number;
+  } | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [pendingDeleteTask, setPendingDeleteTask] = useState<{ id: string; title: string } | null>(null);
   const [sprintPanelCollapsed, setSprintPanelCollapsed] = useState(false);
@@ -225,7 +240,8 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
 
       setSprints(orderedSprintList);
       setSelectedSprintId((prev) => {
-        const preferredSprintId = options?.selectSprintId ?? prev;
+        const hasExplicitSelection = Boolean(options && 'selectSprintId' in options);
+        const preferredSprintId = hasExplicitSelection ? options?.selectSprintId ?? null : prev;
         const nextSelectedSprintId = orderedSprintList.find((sprint) => sprint.sprintId === preferredSprintId)?.sprintId;
         return nextSelectedSprintId ?? orderedSprintList[0]?.sprintId ?? null;
       });
@@ -339,14 +355,17 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     }
   }
 
-  async function handleDeleteSprint() {
-    if (!selectedSprint || deletingSprint) return;
+  async function handleDeleteSprint(reason: string) {
+    if (!pendingDeleteSprint) return;
+    const sprint = pendingDeleteSprint;
+    if (deletingSprintId === sprint.sprintId) return;
 
-    setDeletingSprint(true);
+    setDeletingSprintId(sprint.sprintId);
 
     try {
-      const result = await apiRequest(`/api/real/workspaces/${workspaceId}/sprints/${selectedSprint.sprintId}`, {
+      const result = await apiRequest(`/api/real/workspaces/${workspaceId}/sprints/${sprint.sprintId}`, {
         method: 'DELETE',
+        body: JSON.stringify({ reason }),
       });
 
       if (!result.ok) {
@@ -357,12 +376,12 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
         return;
       }
 
-      setDeleteSprintOpen(false);
-      await loadSprints();
+      setPendingDeleteSprint(null);
+      await loadSprints({ selectSprintId: selectedSprintId === sprint.sprintId ? null : selectedSprintId });
     } catch {
       showSnackbar('스프린트 삭제 중 오류가 발생했습니다.', 'error');
     } finally {
-      setDeletingSprint(false);
+      setDeletingSprintId(null);
     }
   }
 
@@ -618,6 +637,54 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     }
   }
 
+  async function handleDeleteProject(reason: string) {
+    if (!pendingDeleteProject || deletingProjectId === pendingDeleteProject.projectId) return;
+
+    const { projectId } = pendingDeleteProject;
+    const deletedProjectTaskIds = new Set((tasksByProject[projectId] ?? []).map((task) => task.id));
+    setDeletingProjectId(projectId);
+
+    try {
+      const result = await apiRequest(`/api/real/workspaces/${workspaceId}/projects/${projectId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!result.ok) {
+        showSnackbar(
+          getErrorMessage({ code: result.code, message: result.message, status: result.status }),
+          'error',
+        );
+        return;
+      }
+
+      setProjects((prev) => prev.filter((project) => project.projectId !== projectId));
+      setTasksByProject((prev) => {
+        const next = { ...prev };
+        delete next[projectId];
+        return next;
+      });
+      setCollapsedProjects((prev) => {
+        if (!(projectId in prev)) return prev;
+        const next = { ...prev };
+        delete next[projectId];
+        return next;
+      });
+      if (createTaskProjectId === projectId) {
+        setCreateTaskProjectId(null);
+      }
+      if (selectedTask && deletedProjectTaskIds.has(selectedTask.id)) {
+        setDetailModalOpen(false);
+        setSelectedTask(null);
+      }
+      setPendingDeleteProject(null);
+    } catch {
+      showSnackbar('프로젝트 삭제 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setDeletingProjectId(null);
+    }
+  }
+
   async function handleDeleteTask(reason: string) {
     if (!pendingDeleteTask) return;
     const { id: taskId } = pendingDeleteTask;
@@ -760,22 +827,46 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                 <p className="text-text-soft text-[13px] px-2 py-2">스프린트가 없습니다.</p>
               ) : (
                 sprints.map((sprint) => (
-                  <button
-                    key={sprint.sprintId}
-                    type="button"
-                    onClick={() => setSelectedSprintId(sprint.sprintId)}
-                    className={`w-full text-left px-3 py-3 rounded-xl transition-colors ${
-                      selectedSprintId === sprint.sprintId
-                        ? 'bg-accent-dim/80 text-accent-soft border border-accent/20'
-                        : 'text-text hover:bg-surface-2 border border-transparent'
-                    }`}
-                  >
-                    <div className="font-medium text-[14px] truncate">{sprint.name}</div>
-                    <div className="text-[12px] opacity-70 mt-1 flex justify-between">
-                      <span>{formatDate(sprint.startDate)}</span>
-                      <span>{formatDate(sprint.endDate)}</span>
+                  <div key={sprint.sprintId} className="group">
+                    <div
+                      className={`flex items-end gap-2 rounded-xl transition-colors ${
+                        selectedSprintId === sprint.sprintId
+                          ? 'bg-accent-dim/80 text-accent-soft border border-accent/20'
+                          : 'text-text hover:bg-surface-2 border border-transparent'
+                      }`}
+                    >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSprintId(sprint.sprintId)}
+                      className="min-w-0 flex-1 text-left px-3 py-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-medium text-[14px] truncate">{sprint.name}</div>
+                        <div className="mt-2 text-[12px] opacity-70">
+                          <span className="truncate">
+                            {formatCompactDate(sprint.startDate)} ~ {formatCompactDate(sprint.endDate)}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                    <div className="shrink-0 self-end px-3 pb-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setPendingDeleteSprint(sprint)}
+                        disabled={deletingSprintId === sprint.sprintId}
+                        className={`inline-flex size-8 items-center justify-center rounded-lg bg-surface/92 text-text-dim shadow-sm backdrop-blur transition-all hover:bg-surface hover:text-red disabled:cursor-not-allowed disabled:opacity-50 ${
+                          selectedSprintId === sprint.sprintId
+                            ? 'opacity-100'
+                            : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'
+                        }`}
+                        aria-label="스프린트 삭제"
+                        title="스프린트 삭제"
+                      >
+                        <TrashIcon className="size-4" />
+                      </button>
                     </div>
-                  </button>
+                    </div>
+                  </div>
                 ))
               )}
             </div>
@@ -902,6 +993,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                   {filteredAndSortedProjects.map(({ project, tasks, metrics }) => {
                     const isDropTarget = dragOverProjectId === project.projectId;
                     const isCollapsed = collapsedProjects[project.projectId] ?? false;
+                    const projectTaskCount = tasksByProject[project.projectId]?.length ?? 0;
 
                     return (
                       <section
@@ -954,6 +1046,22 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                 className="inline-flex size-8 items-center justify-center rounded-lg border border-line/60 bg-surface-2/50 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
                               >
                                 <PlusIcon className="size-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPendingDeleteProject({
+                                    projectId: project.projectId,
+                                    name: project.name,
+                                    taskCount: projectTaskCount,
+                                  })
+                                }
+                                disabled={deletingProjectId === project.projectId}
+                                className="inline-flex size-8 items-center justify-center rounded-lg border border-line/60 bg-surface-2/50 text-text-dim transition-colors hover:border-red/40 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="프로젝트 삭제"
+                                title="프로젝트 삭제"
+                              >
+                                <TrashIcon className="size-3.5" />
                               </button>
                               <span className="text-[12px] text-text-dim tabular-nums">
                                 {metrics.completedCount} / {metrics.totalCount}
@@ -1255,23 +1363,34 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
           </div>
         </form>
       </Dialog>
-      <Dialog open={deleteSprintOpen} onClose={() => !deletingSprint && setDeleteSprintOpen(false)} title="스프린트 삭제">
-        <div className="flex flex-col gap-4">
-          <p className="m-0 text-[13px] text-text-soft">
-            {selectedSprint
-              ? `'${selectedSprint.name}' 스프린트를 삭제할까요? 연결된 프로젝트와 태스크 상태에 영향이 있을 수 있습니다.`
-              : '선택된 스프린트를 삭제할까요?'}
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setDeleteSprintOpen(false)} disabled={deletingSprint}>
-              취소
-            </Button>
-            <Button type="button" variant="danger" onClick={() => void handleDeleteSprint()} loading={deletingSprint}>
-              삭제
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      <DeleteReasonDialog
+        open={Boolean(pendingDeleteProject)}
+        onClose={() => {
+          if (!deletingProjectId) setPendingDeleteProject(null);
+        }}
+        onConfirm={handleDeleteProject}
+        loading={Boolean(deletingProjectId)}
+        title="프로젝트 삭제"
+        description={
+          pendingDeleteProject
+            ? `'${pendingDeleteProject.name}' 프로젝트를 삭제하는 사유를 입력해 주세요.${pendingDeleteProject.taskCount > 0 ? ` 연결된 태스크 ${pendingDeleteProject.taskCount}개도 함께 영향받을 수 있습니다.` : ''}`
+            : '프로젝트 삭제 사유를 입력해 주세요.'
+        }
+      />
+      <DeleteReasonDialog
+        open={Boolean(pendingDeleteSprint)}
+        onClose={() => {
+          if (!deletingSprintId) setPendingDeleteSprint(null);
+        }}
+        onConfirm={handleDeleteSprint}
+        loading={Boolean(deletingSprintId)}
+        title="스프린트 삭제"
+        description={
+          pendingDeleteSprint
+            ? `'${pendingDeleteSprint.name}' 스프린트를 삭제하는 사유를 입력해 주세요.${selectedSprintId === pendingDeleteSprint.sprintId ? ` 현재 연결된 프로젝트 ${projects.length}개가 함께 영향받을 수 있습니다.` : ' 연결된 프로젝트와 태스크 상태에 영향이 있을 수 있습니다.'}`
+            : '스프린트 삭제 사유를 입력해 주세요.'
+        }
+      />
     </div>
   );
 }

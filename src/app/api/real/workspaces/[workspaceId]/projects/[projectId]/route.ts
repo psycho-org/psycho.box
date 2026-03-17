@@ -62,59 +62,9 @@ function resolveAccountId(options: {
   return null;
 }
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ workspaceId: string; sprintId: string }> },
-) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
-  const userId = cookieStore.get(USER_ID_COOKIE)?.value ?? null;
-  if (!token) {
-    return Response.json({ message: 'Unauthorized' }, { status: 401 });
-  }
-
-  const accountFromQuery = new URL(request.url).searchParams.get('account');
-  const accountId = resolveAccountId({
-    queryAccount: accountFromQuery,
-    cookieUserId: userId,
-    accessToken: token,
-  });
-  if (!accountId) {
-    return Response.json({ message: 'User ID required for sprint update' }, { status: 400 });
-  }
-
-  const { workspaceId, sprintId } = await context.params;
-  const body = await request.json().catch(() => ({}));
-  const url = new URL(`${BACKEND_API_URL}/api/v1/workspaces/${workspaceId}/sprints/${sprintId}`);
-  url.searchParams.set('account', accountId);
-
-  const res = await fetch(url.toString(), {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    console.error('[API] PATCH /workspaces/:workspaceId/sprints/:sprintId failed', {
-      workspaceId,
-      sprintId,
-      accountId,
-      status: res.status,
-      requestBody: body,
-      responseBody: data,
-    });
-  }
-  return Response.json(data, { status: res.status });
-}
-
 export async function DELETE(
   request: Request,
-  context: { params: Promise<{ workspaceId: string; sprintId: string }> },
+  context: { params: Promise<{ workspaceId: string; projectId: string }> },
 ) {
   const cookieStore = await cookies();
   const token = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
@@ -130,12 +80,12 @@ export async function DELETE(
     accessToken: token,
   });
   if (!accountId) {
-    return Response.json({ message: 'User ID required for sprint delete' }, { status: 400 });
+    return Response.json({ message: 'User ID required for project delete' }, { status: 400 });
   }
 
-  const { workspaceId, sprintId } = await context.params;
+  const { workspaceId, projectId } = await context.params;
   const body = await request.json().catch(() => ({}));
-  const url = new URL(`${BACKEND_API_URL}/api/v1/workspaces/${workspaceId}/sprints/${sprintId}`);
+  const url = new URL(`${BACKEND_API_URL}/api/v1/workspaces/${workspaceId}/projects/${projectId}`);
   url.searchParams.set('account', accountId);
 
   const res = await fetch(url.toString(), {
@@ -150,9 +100,9 @@ export async function DELETE(
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    console.error('[API] DELETE /workspaces/:workspaceId/sprints/:sprintId failed', {
+    console.error('[API] DELETE /workspaces/:workspaceId/projects/:projectId failed', {
       workspaceId,
-      sprintId,
+      projectId,
       accountId,
       status: res.status,
       requestBody: body,

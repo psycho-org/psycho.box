@@ -11,6 +11,10 @@ interface DeleteReasonDialogProps {
   loading?: boolean;
   title?: string;
   description?: string;
+  confirmText?: string;
+  confirmLabel?: string;
+  confirmPlaceholder?: string;
+  confirmDescription?: string;
 }
 
 export function DeleteReasonDialog({
@@ -20,13 +24,19 @@ export function DeleteReasonDialog({
   loading = false,
   title = '삭제 사유 입력',
   description = '삭제 사유를 입력해 주세요.',
+  confirmText,
+  confirmLabel = '이름 확인',
+  confirmPlaceholder,
+  confirmDescription,
 }: DeleteReasonDialogProps) {
   const [reason, setReason] = useState('');
+  const [confirmValue, setConfirmValue] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!open) {
       setReason('');
+      setConfirmValue('');
       setError('');
     }
   }, [open]);
@@ -35,6 +45,10 @@ export function DeleteReasonDialog({
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
       setError('삭제 사유를 입력해 주세요.');
+      return;
+    }
+    if (confirmText && confirmValue.trim() !== confirmText) {
+      setError('확인 문구가 일치하지 않습니다.');
       return;
     }
 
@@ -46,6 +60,26 @@ export function DeleteReasonDialog({
     <Dialog open={open} onClose={() => !loading && onClose()} title={title}>
       <div className="flex flex-col gap-4">
         <p className="m-0 text-[13px] text-text-soft">{description}</p>
+        {confirmText ? (
+          <div>
+            <label htmlFor="delete-confirm" className="block text-[13px] font-medium text-text-soft mb-1.5">
+              {confirmLabel} <span className="text-red">*</span>
+            </label>
+            <input
+              id="delete-confirm"
+              type="text"
+              value={confirmValue}
+              onChange={(event) => {
+                setConfirmValue(event.target.value);
+                if (error) setError('');
+              }}
+              placeholder={confirmPlaceholder ?? confirmText}
+              className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              disabled={loading}
+            />
+            {confirmDescription ? <p className="m-0 mt-2 text-[12px] text-text-dim">{confirmDescription}</p> : null}
+          </div>
+        ) : null}
         <div>
           <label htmlFor="delete-reason" className="block text-[13px] font-medium text-text-soft mb-1.5">
             사유 <span className="text-red">*</span>
