@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePageTitle } from '@/components/page-title-context';
 import { TaskStatusDot, CollapsibleTableList } from '@/components/ui';
@@ -119,6 +119,22 @@ function MoreIcon({ className }: { className?: string }) {
   );
 }
 
+function PanelToggleIcon({ className, collapsed }: { className?: string; collapsed: boolean }) {
+  return (
+    <svg
+      className={`${className} transition-transform ${collapsed ? 'rotate-180' : ''}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
 function ChevronIcon({ className, expanded }: { className?: string; expanded: boolean }) {
   return (
     <svg
@@ -180,7 +196,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     : 'sprint';
   const displayParam = searchParams.get('display');
   const display = displayParam === 'list' ? 'list' : displayParam === 'card' ? 'card' : 'kanban';
-  const [assigneesExpanded, setAssigneesExpanded] = useState(true);
   const [selectedAssignee, setSelectedAssignee] = useState<AssigneeFilterKey | null>(null);
   const [currentUserId] = useState<string | null>(() => getCurrentUserId());
   const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
@@ -188,6 +203,9 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberDisplaySource[]>([]);
   const [memberDisplayNameMap, setMemberDisplayNameMap] = useState<WorkspaceMemberDisplayNameMap>({});
+  const [assigneePanelCollapsed, setAssigneePanelCollapsed] = useState(false);
+  const [assigneeToggleButtonLeft, setAssigneeToggleButtonLeft] = useState<number | null>(null);
+  const assigneePanelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -523,6 +541,35 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     pageTitleCtx?.setTitle(pageTitle);
   }, [pageTitle, pageTitleCtx]);
 
+  useEffect(() => {
+    if (view !== 'assignee') return;
+
+    function updateToggleButtonLeft() {
+      const panelRect = assigneePanelRef.current?.getBoundingClientRect();
+      if (!panelRect) return;
+      setAssigneeToggleButtonLeft(panelRect.right);
+    }
+
+    updateToggleButtonLeft();
+    const panelElement = assigneePanelRef.current;
+    const resizeObserver =
+      panelElement && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updateToggleButtonLeft())
+        : null;
+
+    if (panelElement && resizeObserver) {
+      resizeObserver.observe(panelElement);
+    }
+
+    window.addEventListener('resize', updateToggleButtonLeft);
+    window.addEventListener('scroll', updateToggleButtonLeft, { passive: true });
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateToggleButtonLeft);
+      window.removeEventListener('scroll', updateToggleButtonLeft);
+    };
+  }, [view, assigneePanelCollapsed]);
+
   return (
     <>
     <section className="bg-surface border border-line/40 rounded-2xl p-5 shadow-sm">
@@ -607,19 +654,26 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
             />
           </div>
         ) : view === 'assignee' ? (
-          <div className="flex gap-4">
-            {/* 담당자 사이드바 */}
-            <aside className="w-52 shrink-0">
-              <button
-                type="button"
-                onClick={() => setAssigneesExpanded((e) => !e)}
-                className="w-full flex items-center gap-2 py-2 text-left text-[14px] font-semibold text-text"
-              >
-                <ChevronIcon className="size-4 text-text-dim" expanded={assigneesExpanded} />
-                담당자
-              </button>
-              {assigneesExpanded && (
-                <div className="mt-1 space-y-0.5">
+          <div className="relative flex gap-4">
+            <aside
+              ref={assigneePanelRef}
+              className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
+                assigneePanelCollapsed
+                  ? 'w-4 items-center justify-center bg-transparent border-transparent shadow-none'
+                  : 'w-56 rounded-2xl border border-line/40 bg-surface-2/30'
+              }`}
+            >
+              {assigneePanelCollapsed ? (
+                <div className="h-full w-px rounded-full bg-line/60" />
+              ) : (
+                <>
+                  <div className="border-b border-line/50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="m-0 text-[14px] font-semibold text-text">담당자</h3>
+                      <span className="text-[12px] text-text-dim">{assigneeCount}</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
                   <button
                     type="button"
                     onClick={() => setSelectedAssignee(null)}
@@ -668,9 +722,20 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
                       </span>
                     </button>
                   )}
-                </div>
+                  </div>
+                </>
               )}
             </aside>
+            <button
+              type="button"
+              onClick={() => setAssigneePanelCollapsed((prev) => !prev)}
+              className="fixed top-[50svh] z-20 -translate-x-1/2 -translate-y-1/2 group flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
+              style={assigneeToggleButtonLeft ? { left: assigneeToggleButtonLeft } : undefined}
+              aria-label={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
+              title={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
+            >
+              <PanelToggleIcon className="size-3.5 group-hover:scale-110" collapsed={assigneePanelCollapsed} />
+            </button>
             {/* 담당자별 태스크 보드 */}
             <div className="flex-1 min-w-0">
               <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-1">
