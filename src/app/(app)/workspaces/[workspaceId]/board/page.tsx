@@ -14,6 +14,13 @@ import { USER_ID_COOKIE } from '@/lib/constants';
 import { getErrorMessage } from '@/lib/error-messages';
 import type { TaskStatus } from '@/lib/task-status';
 import { TASK_STATUS_COLORS } from '@/lib/task-status';
+import {
+  applyWorkspaceMemberDisplayNamesToTasks,
+  fetchWorkspaceMembers,
+  fetchWorkspaceMemberDisplayNameMap,
+  type WorkspaceMemberDisplayNameMap,
+  type WorkspaceMemberDisplaySource,
+} from '@/lib/workspace-member-display';
 
 type BoardView = 'sprint' | 'assignee' | 'my' | 'roadmap';
 
@@ -179,6 +186,8 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
+  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberDisplaySource[]>([]);
+  const [memberDisplayNameMap, setMemberDisplayNameMap] = useState<WorkspaceMemberDisplayNameMap>({});
 
   useEffect(() => {
     setCurrentUserId(getCurrentUserId());
@@ -253,6 +262,24 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   function openDetailModal(task: TaskDetailModalTask) {
     setSelectedTask(task);
     setDetailModalOpen(true);
+  }
+
+  /** 현재 뷰에서 보이는 태스크 리스트 (네비게이션용) */
+  const currentTaskList: Task[] = view === 'my'
+    ? myTasks
+    : view === 'assignee'
+      ? filteredTasks
+      : tasks;
+
+  const selectedTaskIndex = selectedTask
+    ? currentTaskList.findIndex((t) => t.id === selectedTask.id)
+    : -1;
+
+  function navigateTask(direction: 'prev' | 'next') {
+    const idx = direction === 'prev' ? selectedTaskIndex - 1 : selectedTaskIndex + 1;
+    if (idx < 0 || idx >= currentTaskList.length) return;
+    const nextTask = currentTaskList[idx];
+    openDetailModal(toTodoCardTask(nextTask));
   }
 
   function toTodoCardTask(task: Task) {
@@ -376,11 +403,21 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   function loadTasks() {
     if (!workspaceId) return;
     setLoading(true);
-    apiRequest<Task[]>(`/api/real/workspaces/${workspaceId}/tasks?page=1&size=100`)
-      .then((result) => {
+    Promise.all([
+      apiRequest<Task[]>(`/api/real/workspaces/${workspaceId}/tasks?page=1&size=100`),
+      fetchWorkspaceMembers(workspaceId),
+    ])
+      .then(([result, members]) => {
+        const nextMemberDisplayNameMap = Object.fromEntries(
+          members
+            .map((member) => [member.accountId?.trim(), member.name?.trim()] as const)
+            .filter(([accountId, name]) => accountId && name),
+        ) as WorkspaceMemberDisplayNameMap;
+        setWorkspaceMembers(members);
+        setMemberDisplayNameMap(nextMemberDisplayNameMap);
         if (result.ok) {
           const list = Array.isArray(result.data) ? result.data : [];
-          setTasks(list);
+          setTasks(applyWorkspaceMemberDisplayNamesToTasks(list, nextMemberDisplayNameMap));
           setError(null);
         } else {
           setError(result.message ?? '태스크를 불러오지 못했습니다.');
@@ -805,6 +842,14 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
         open={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
         task={selectedTask}
+        workspaceId={workspaceId}
+        hasPrev={selectedTaskIndex > 0}
+        hasNext={selectedTaskIndex < currentTaskList.length - 1}
+        onPrev={() => navigateTask('prev')}
+        onNext={() => navigateTask('next')}
+        onUpdated={loadTasks}
+        workspaceMembers={workspaceMembers}
+        memberDisplayNameMap={memberDisplayNameMap}
       />
     </>
   );

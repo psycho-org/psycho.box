@@ -61,6 +61,40 @@ function resolveAccountId(options: {
   return null;
 }
 
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ workspaceId: string; taskId: string }> },
+) {
+  const token = (await cookies()).get(ACCESS_TOKEN_COOKIE)?.value;
+  if (!token) {
+    return Response.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { workspaceId, taskId } = await context.params;
+
+  const url = new URL(`${BACKEND_API_URL}/api/v1/workspaces/${workspaceId}/tasks/${taskId}`);
+
+  const res = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    console.error('[API] GET /workspaces/:workspaceId/tasks/:taskId failed', {
+      workspaceId,
+      taskId,
+      status: res.status,
+      responseBody: data,
+    });
+  }
+  return Response.json(data, { status: res.status });
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ workspaceId: string; taskId: string }> },

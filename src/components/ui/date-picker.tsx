@@ -22,6 +22,8 @@ export interface DatePickerProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** 팝업 위치: bottom(기본)=트리거 좌측 정렬 아래, bottom-end=트리거 우측 정렬 아래, right=트리거 오른쪽 */
+  popupPlacement?: 'bottom' | 'bottom-end' | 'right';
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -110,6 +112,7 @@ export function DatePicker({
   placeholder = '날짜 선택',
   disabled = false,
   className = '',
+  popupPlacement = 'bottom',
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => {
@@ -141,14 +144,42 @@ export function DatePicker({
       const popupWidth = 300;
       const gap = 8;
       const padding = 16;
-      const spaceBelow = window.innerHeight - rect.bottom - padding;
-      const spaceAbove = rect.top - padding;
-      const openAbove = spaceBelow < popupHeight && spaceAbove >= spaceBelow;
-      const top = openAbove ? rect.top - popupHeight - gap : rect.bottom + gap;
-      let left = rect.left;
-      if (left + popupWidth > window.innerWidth - padding) left = window.innerWidth - popupWidth - padding;
-      if (left < padding) left = padding;
-      setPopupStyle({ top, left });
+
+      if (popupPlacement === 'right') {
+        // 오른쪽에 배치: 트리거 오른쪽에 표시, 세로는 트리거 상단 기준
+        let left = rect.right + gap;
+        let top = rect.top;
+        // 오른쪽 공간 부족 → 왼쪽에 배치
+        if (left + popupWidth > window.innerWidth - padding) {
+          left = rect.left - popupWidth - gap;
+        }
+        // 아래 공간 부족 → 위로 올림
+        if (top + popupHeight > window.innerHeight - padding) {
+          top = window.innerHeight - popupHeight - padding;
+        }
+        if (top < padding) top = padding;
+        if (left < padding) left = padding;
+        setPopupStyle({ top, left });
+      } else if (popupPlacement === 'bottom-end') {
+        // 아래에 배치하되, 우측 정렬 (트리거의 오른쪽 끝과 팝업의 오른쪽 끝을 맞춤)
+        const spaceBelow = window.innerHeight - rect.bottom - padding;
+        const spaceAbove = rect.top - padding;
+        const openAbove = spaceBelow < popupHeight && spaceAbove >= spaceBelow;
+        const top = openAbove ? rect.top - popupHeight - gap : rect.bottom + gap;
+        let left = rect.right - popupWidth;
+        if (left < padding) left = padding;
+        setPopupStyle({ top, left });
+      } else {
+        // 기본 (bottom): 아래에 배치, 좌측 정렬
+        const spaceBelow = window.innerHeight - rect.bottom - padding;
+        const spaceAbove = rect.top - padding;
+        const openAbove = spaceBelow < popupHeight && spaceAbove >= spaceBelow;
+        const top = openAbove ? rect.top - popupHeight - gap : rect.bottom + gap;
+        let left = rect.left;
+        if (left + popupWidth > window.innerWidth - padding) left = window.innerWidth - popupWidth - padding;
+        if (left < padding) left = padding;
+        setPopupStyle({ top, left });
+      }
     }
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node;
