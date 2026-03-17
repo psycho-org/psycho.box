@@ -844,6 +844,11 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
         onPrev={() => navigateTask('prev')}
         onNext={() => navigateTask('next')}
         onUpdated={loadTasks}
+        onDeleted={() => {
+          setDetailModalOpen(false);
+          setSelectedTask(null);
+          void loadTasks();
+        }}
         workspaceMembers={workspaceMembers}
         memberDisplayNameMap={memberDisplayNameMap}
       />

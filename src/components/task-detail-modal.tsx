@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, DatePicker, TaskStatusDot } from '@/components/ui';
+import { DeleteReasonDialog } from '@/components/delete-reason-dialog';
 import { TASK_STATUS_LABELS, type TaskStatus } from '@/lib/task-status';
 import { apiRequest } from '@/lib/client';
+import { getErrorMessage } from '@/lib/error-messages';
 import {
   applyWorkspaceMemberDisplayNamesToTask,
   fetchWorkspaceMemberDisplayNameMap,
@@ -46,6 +48,8 @@ interface TaskDetailModalProps {
   onClose: () => void;
   task: TaskDetailModalTask | null;
   workspaceId: string;
+  minDate?: string;
+  maxDate?: string;
   /** 이전/다음 탐색용 */
   onPrev?: () => void;
   onNext?: () => void;
@@ -53,6 +57,8 @@ interface TaskDetailModalProps {
   hasNext?: boolean;
   /** 수정 후 부모에 알림 */
   onUpdated?: () => void;
+  /** 삭제 후 부모에 알림 */
+  onDeleted?: () => void;
   workspaceMembers?: WorkspaceMemberDisplaySource[];
   memberDisplayNameMap?: WorkspaceMemberDisplayNameMap;
 }
@@ -223,17 +229,22 @@ export function TaskDetailModal({
   onClose,
   task,
   workspaceId,
+  minDate,
+  maxDate,
   onPrev,
   onNext,
   hasPrev = false,
   hasNext = false,
   onUpdated,
+  onDeleted,
   workspaceMembers,
   memberDisplayNameMap,
 }: TaskDetailModalProps) {
   const [detail, setDetail] = useState<TaskDetailResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [members, setMembers] = useState<WorkspaceMemberDisplaySource[]>(workspaceMembers ?? []);
@@ -373,6 +384,34 @@ export function TaskDetailModal({
       setError('수정에 실패했습니다. 변경이 취소되었습니다.');
       // 경고 메세지 3초 후 제거
       setTimeout(() => setError(null), 3000);
+    }
+  }
+
+  async function handleDelete(reason: string) {
+    if (!task?.id || deleting) return;
+
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const result = await apiRequest(`/api/real/workspaces/${workspaceId}/tasks/${task.id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!result.ok) {
+        setError(getErrorMessage({ code: result.code, message: result.message, status: result.status }));
+        return;
+      }
+
+      setHasChanges(false);
+      setDeleteDialogOpen(false);
+      onDeleted?.();
+      onClose();
+    } catch {
+      setError('태스크 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -527,6 +566,8 @@ export function TaskDetailModal({
                     const dateStr = v as string | null;
                     void patchField('dueDate', dateStr ? `${dateStr}T23:59:59.000Z` : null);
                   }}
+                  minDate={minDate}
+                  maxDate={maxDate}
                   placeholder="마감일 선택"
                   popupPlacement="bottom-end"
                 />
@@ -625,11 +666,23 @@ export function TaskDetailModal({
         {/* 푸터 */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-line bg-surface shrink-0">
           <span className="text-[11px] text-text-dim">더블클릭하면 필드를 수정할 수 있습니다</span>
-          <Button type="button" variant="secondary" onClick={handleClose}>
-            닫기
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="danger" onClick={() => setDeleteDialogOpen(true)} disabled={deleting}>
+              삭제
+            </Button>
+            <Button type="button" variant="secondary" onClick={handleClose} disabled={deleting}>
+              닫기
+            </Button>
+          </div>
         </div>
       </div>
+      <DeleteReasonDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        description={`'${source.title}' 태스크를 삭제하는 사유를 입력해 주세요.`}
+      />
     </div>
   );
 

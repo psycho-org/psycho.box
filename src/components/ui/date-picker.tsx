@@ -37,6 +37,30 @@ function parseYMD(s: string): Date {
   return new Date(y, m - 1, d);
 }
 
+function getInitialViewDate(options: {
+  mode: DatePickerMode;
+  value: DatePickerValue;
+  minDate?: string;
+  maxDate?: string;
+}): Date {
+  const { mode, value, minDate, maxDate } = options;
+  const valueDate =
+    mode === 'single' && value
+      ? parseYMD(value as string)
+      : mode === 'range' && value && (value as { start: string; end: string }).start
+        ? parseYMD((value as { start: string; end: string }).start)
+        : null;
+
+  if (valueDate) return valueDate;
+
+  const today = new Date();
+  const todayYmd = toYMD(today);
+
+  if (minDate && todayYmd < minDate) return parseYMD(minDate);
+  if (maxDate && todayYmd > maxDate) return parseYMD(maxDate);
+  return today;
+}
+
 function getDaysInMonth(year: number, month: number): Date[] {
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
@@ -80,6 +104,12 @@ function isInRange(dateStr: string, start: string, end: string): boolean {
   return dateStr >= start && dateStr <= end;
 }
 
+function isOutsideAllowedRange(dateStr: string, minDate?: string, maxDate?: string): boolean {
+  if (minDate && dateStr < minDate) return true;
+  if (maxDate && dateStr > maxDate) return true;
+  return false;
+}
+
 function isSelected(
   dateStr: string,
   mode: DatePickerMode,
@@ -114,17 +144,10 @@ export function DatePicker({
   className = '',
   popupPlacement = 'bottom',
 }: DatePickerProps) {
+  const initialViewDate = getInitialViewDate({ mode, value, minDate, maxDate });
   const [open, setOpen] = useState(false);
-  const [viewYear, setViewYear] = useState(() => {
-    const v = mode === 'single' && value ? value as string : mode === 'range' && value ? (value as { start: string; end: string }).start : null;
-    if (v) return parseYMD(v).getFullYear();
-    return new Date().getFullYear();
-  });
-  const [viewMonth, setViewMonth] = useState(() => {
-    const v = mode === 'single' && value ? value as string : mode === 'range' && value ? (value as { start: string; end: string }).start : null;
-    if (v) return parseYMD(v).getMonth();
-    return new Date().getMonth();
-  });
+  const [viewYear, setViewYear] = useState(() => initialViewDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => initialViewDate.getMonth());
   const [rangeStart, setRangeStart] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [popupStyle, setPopupStyle] = useState<{ top: number; left: number } | null>(null);
@@ -137,6 +160,11 @@ export function DatePicker({
       setPopupStyle(null);
       return;
     }
+
+    const nextViewDate = getInitialViewDate({ mode, value, minDate, maxDate });
+    setViewYear(nextViewDate.getFullYear());
+    setViewMonth(nextViewDate.getMonth());
+
     const trigger = triggerRef.current;
     if (trigger) {
       const rect = trigger.getBoundingClientRect();
@@ -188,7 +216,7 @@ export function DatePicker({
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open, popupPlacement]);
+  }, [open, popupPlacement, mode, value, minDate, maxDate]);
 
   useEffect(() => {
     if (mode !== 'range' || !isDragging) return;
@@ -202,6 +230,8 @@ export function DatePicker({
 
   const days = getDaysInMonth(viewYear, viewMonth);
   const display = formatDisplay(mode, value);
+  const todayStr = toYMD(new Date());
+  const todayDisabled = isOutsideAllowedRange(todayStr, minDate, maxDate);
 
   function goPrevMonth() {
     if (viewMonth === 0) {
@@ -221,7 +251,7 @@ export function DatePicker({
     const t = new Date();
     setViewYear(t.getFullYear());
     setViewMonth(t.getMonth());
-    if (mode === 'single') onChange(toYMD(t));
+    if (mode === 'single' && !todayDisabled) onChange(toYMD(t));
     setOpen(false);
   }
 
@@ -282,7 +312,6 @@ export function DatePicker({
   }
 
   const isCurrentMonth = (d: Date) => d.getMonth() === viewMonth;
-  const todayStr = toYMD(new Date());
 
   return (
     <div ref={ref} className={`relative ${className}`}>
@@ -369,6 +398,7 @@ export function DatePicker({
               {days.map((d, i) => {
                 const dateStr = toYMD(d);
                 const current = isCurrentMonth(d);
+                const isDisabledDate = isOutsideAllowedRange(dateStr, minDate, maxDate);
                 const selected = isSelected(dateStr, mode, value);
                 const rangeEdge = mode === 'range' && isStartOrEnd(dateStr, value);
                 const inRange = mode === 'range' && selected && !rangeEdge;
@@ -378,6 +408,7 @@ export function DatePicker({
                   <button
                     key={i}
                     type="button"
+                    disabled={isDisabledDate}
                     onClick={() => handleDateClick(dateStr)}
                     onMouseDown={() => handleDateMouseDown(dateStr)}
                     onMouseEnter={() => handleDateMouseEnter(dateStr)}
@@ -385,10 +416,11 @@ export function DatePicker({
                       aspect-square rounded-xl text-[13px] font-medium transition-all duration-150
                       flex items-center justify-center
                       ${!current ? 'text-text-dim/60' : 'text-text'}
+                      ${isDisabledDate ? 'cursor-not-allowed opacity-35 hover:bg-transparent' : ''}
                       ${selected ? 'bg-accent text-white shadow-sm' : ''}
                       ${inRange ? 'bg-accent/20 text-accent-soft' : ''}
                       ${rangeEdge ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface' : ''}
-                      ${!selected && !inRange ? 'hover:bg-surface-3' : ''}
+                      ${!selected && !inRange && !isDisabledDate ? 'hover:bg-surface-3' : ''}
                       ${isToday && !selected ? 'ring-1 ring-accent/50' : ''}
                     `}
                   >
@@ -408,7 +440,8 @@ export function DatePicker({
             <button
               type="button"
               onClick={goToday}
-              className="px-3 py-1.5 text-[12px] font-medium text-accent-soft hover:bg-accent-dim rounded-lg transition-colors"
+              disabled={todayDisabled}
+              className="px-3 py-1.5 text-[12px] font-medium text-accent-soft hover:bg-accent-dim rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
             >
               오늘
             </button>

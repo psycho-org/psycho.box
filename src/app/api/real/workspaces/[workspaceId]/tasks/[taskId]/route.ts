@@ -149,3 +149,53 @@ export async function PATCH(
   }
   return Response.json(data, { status: res.status });
 }
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ workspaceId: string; taskId: string }> },
+) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
+  const userId = cookieStore.get(USER_ID_COOKIE)?.value ?? null;
+  if (!token) {
+    return Response.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  const accountFromQuery = new URL(request.url).searchParams.get('account');
+  const accountId = resolveAccountId({
+    queryAccount: accountFromQuery,
+    cookieUserId: userId,
+    accessToken: token,
+  });
+  if (!accountId) {
+    return Response.json({ message: 'User ID required for task delete' }, { status: 400 });
+  }
+
+  const { workspaceId, taskId } = await context.params;
+  const body = await request.json().catch(() => ({}));
+  const url = new URL(`${BACKEND_API_URL}/api/v1/workspaces/${workspaceId}/tasks/${taskId}`);
+  url.searchParams.set('account', accountId);
+
+  const res = await fetch(url.toString(), {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    console.error('[API] DELETE /workspaces/:workspaceId/tasks/:taskId failed', {
+      workspaceId,
+      taskId,
+      accountId,
+      status: res.status,
+      requestBody: body,
+      responseBody: data,
+    });
+  }
+  return Response.json(data, { status: res.status });
+}

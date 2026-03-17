@@ -11,7 +11,10 @@ import {
 } from '@/lib/workspace-member-display';
 import { TaskStatusDot } from '@/components/ui';
 import { Snackbar } from '@/components/ui/snackbar';
+import { TaskCreateModal } from '@/components/task-create-modal';
+import { DeleteReasonDialog } from '@/components/delete-reason-dialog';
 import { TaskDetailModal, type TaskDetailModalTask } from '@/components/task-detail-modal';
+import { getErrorMessage } from '@/lib/error-messages';
 import type { TaskStatus } from '@/lib/task-status';
 
 interface Sprint {
@@ -89,6 +92,17 @@ function PlusIcon({ className }: { className?: string }) {
   );
 }
 
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
 function PanelToggleIcon({ className, collapsed }: { className?: string; collapsed: boolean }) {
   return (
     <svg
@@ -138,7 +152,11 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [creatingProject, setCreatingProject] = useState(false);
+  const [createTaskProjectId, setCreateTaskProjectId] = useState<string | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [pendingDeleteTask, setPendingDeleteTask] = useState<{ id: string; title: string } | null>(null);
   const [sprintPanelCollapsed, setSprintPanelCollapsed] = useState(false);
+  const canCreateProject = Boolean(selectedSprintId) && Boolean(projectNameDraft.trim()) && !creatingProject;
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -168,7 +186,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     [],
   );
 
-  const loadBoard = useCallback(async () => {
+  const loadBoard = useCallback(async (options?: { prioritizeProjectId?: string | null }) => {
     if (!workspaceId || !selectedSprintId) {
       setProjects([]);
       setTasksByProject({});
@@ -189,9 +207,16 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       }
 
       const projectList = Array.isArray(projectResult.data) ? projectResult.data : [];
-      setProjects(projectList);
+      const prioritizedProjectId = options?.prioritizeProjectId;
+      const orderedProjectList = prioritizedProjectId
+        ? [
+            ...projectList.filter((project) => project.projectId === prioritizedProjectId),
+            ...projectList.filter((project) => project.projectId !== prioritizedProjectId),
+          ]
+        : projectList;
+      setProjects(orderedProjectList);
 
-      if (projectList.length === 0) {
+      if (orderedProjectList.length === 0) {
         setTasksByProject({});
         setError(null);
         return;
@@ -199,7 +224,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
 
       const [members, ...taskResults] = await Promise.all([
         fetchWorkspaceMembers(workspaceId),
-        ...projectList.map((project) =>
+        ...orderedProjectList.map((project) =>
           apiRequest<{ data: Task[] }>(
             `/api/real/workspaces/${workspaceId}/projects/${project.projectId}/tasks?page=0&size=100`,
           ),
@@ -209,7 +234,7 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
       setWorkspaceMembers(members);
       setMemberDisplayNameMap(nextMemberDisplayNameMap);
 
-      const nextTasksByProject = projectList.reduce<Record<string, Task[]>>((acc, project, index) => {
+      const nextTasksByProject = orderedProjectList.reduce<Record<string, Task[]>>((acc, project, index) => {
         const taskResult = taskResults[index];
         const list = taskResult?.ok
           ? Array.isArray(taskResult.data)
@@ -238,6 +263,8 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     () => sprints.find((sprint) => sprint.sprintId === selectedSprintId) ?? null,
     [sprints, selectedSprintId],
   );
+  const sprintMinDate = selectedSprint?.startDate?.slice(0, 10);
+  const sprintMaxDate = selectedSprint?.endDate?.slice(0, 10);
 
   const totalTaskCount = useMemo(
     () => Object.values(tasksByProject).reduce((sum, tasks) => sum + tasks.length, 0),
@@ -368,24 +395,70 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
     if (!name || !selectedSprintId || creatingProject) return;
 
     setCreatingProject(true);
-    const result = await apiRequest<{ projectId?: string }>(
-      `/api/real/workspaces/${workspaceId}/sprints/${selectedSprintId}/projects`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ name }),
-      },
-    );
 
-    if (!result.ok) {
-      showSnackbar(result.message ?? '프로젝트 생성에 실패했습니다.', 'error');
+    try {
+      const result = await apiRequest<{ projectId?: string }>(
+        `/api/real/workspaces/${workspaceId}/sprints/${selectedSprintId}/projects`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ name }),
+        },
+      );
+
+      if (!result.ok) {
+        showSnackbar(result.message ?? '프로젝트 생성에 실패했습니다.', 'error');
+        return;
+      }
+
+      setProjectNameDraft('');
+      await loadBoard({ prioritizeProjectId: result.data?.projectId ?? null });
+    } catch {
+      showSnackbar('프로젝트 생성 중 오류가 발생했습니다.', 'error');
+    } finally {
       setCreatingProject(false);
-      return;
     }
+  }
 
-    setProjectNameDraft('');
-    showSnackbar('프로젝트를 생성했습니다.', 'success');
-    setCreatingProject(false);
-    await loadBoard();
+  async function handleDeleteTask(reason: string) {
+    if (!pendingDeleteTask) return;
+    const { id: taskId } = pendingDeleteTask;
+    if (deletingTaskId === taskId) return;
+
+    setDeletingTaskId(taskId);
+
+    try {
+      const result = await apiRequest(`/api/real/workspaces/${workspaceId}/tasks/${taskId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!result.ok) {
+        showSnackbar(
+          getErrorMessage({ code: result.code, message: result.message, status: result.status }),
+          'error',
+        );
+        return;
+      }
+
+      setTasksByProject((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).map(([projectId, tasks]) => [
+            projectId,
+            tasks.filter((task) => task.id !== taskId),
+          ]),
+        ),
+      );
+
+      if (selectedTask?.id === taskId) {
+        setDetailModalOpen(false);
+        setSelectedTask(null);
+      }
+      setPendingDeleteTask(null);
+    } catch {
+      showSnackbar('태스크 삭제 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setDeletingTaskId(null);
+    }
   }
 
   function toDetailTask(task: Task): TaskDetailModalTask {
@@ -547,16 +620,17 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                         void handleCreateProject();
                       }
                     }}
-                    placeholder="새 프로젝트 이름"
+                    disabled={!selectedSprintId || creatingProject}
+                    placeholder={selectedSprintId ? '새 프로젝트 이름' : '먼저 스프린트를 선택하세요'}
                     className="w-full bg-transparent text-[13px] text-text outline-none placeholder:text-text-dim"
                   />
                   <button
                     type="button"
                     onClick={() => void handleCreateProject()}
-                    disabled={!projectNameDraft.trim() || creatingProject}
-                    className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50"
+                    disabled={!canCreateProject}
+                    className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    추가
+                    {creatingProject ? '추가 중...' : '추가'}
                   </button>
                 </div>
                 <label className="flex items-center gap-2 rounded-xl border border-line/50 bg-surface-2/40 px-3 py-2 text-[13px] text-text">
@@ -642,6 +716,14 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                               </p>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setCreateTaskProjectId(project.projectId)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-line/60 bg-surface-2/50 px-3 py-1.5 text-[12px] font-medium text-text transition-colors hover:border-accent/40 hover:text-accent-soft"
+                              >
+                                <PlusIcon className="size-3.5" />
+                                태스크 추가
+                              </button>
                               <span className="text-[12px] text-text-dim tabular-nums">
                                 {metrics.completedCount} / {metrics.totalCount}
                               </span>
@@ -698,25 +780,40 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                                         <span>마감일 {formatDate(task.dueDate)}</span>
                                       </div>
                                     </div>
-                                    <select
-                                      aria-label="프로젝트 이동"
-                                      className="shrink-0 rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text"
-                                      value={project.projectId}
-                                      onClick={(event) => event.stopPropagation()}
-                                      onChange={(event) => {
-                                        event.stopPropagation();
-                                        const toProjectId = event.target.value;
-                                        if (toProjectId !== project.projectId) {
-                                          void commitTaskMove(task.id, project.projectId, toProjectId);
-                                        }
-                                      }}
-                                    >
-                                      {projects.map((targetProject) => (
-                                        <option key={targetProject.projectId} value={targetProject.projectId}>
-                                          {targetProject.name}
-                                        </option>
-                                      ))}
-                                    </select>
+                                    <div className="flex items-start gap-2 shrink-0">
+                                      <select
+                                        aria-label="프로젝트 이동"
+                                        className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text"
+                                        value={project.projectId}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onChange={(event) => {
+                                          event.stopPropagation();
+                                          const toProjectId = event.target.value;
+                                          if (toProjectId !== project.projectId) {
+                                            void commitTaskMove(task.id, project.projectId, toProjectId);
+                                          }
+                                        }}
+                                      >
+                                        {projects.map((targetProject) => (
+                                          <option key={targetProject.projectId} value={targetProject.projectId}>
+                                            {targetProject.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <button
+                                        type="button"
+                                        aria-label="태스크 삭제"
+                                        title="태스크 삭제"
+                                        disabled={deletingTaskId === task.id}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setPendingDeleteTask({ id: task.id, title: task.title });
+                                        }}
+                                        className="rounded-lg border border-line/70 bg-surface px-2 py-1.5 text-text-dim transition-colors hover:border-red/40 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
+                                      >
+                                        <TrashIcon className="size-4" />
+                                      </button>
+                                    </div>
                                   </div>
                                 </article>
                               ))}
@@ -746,6 +843,8 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
         onClose={() => setDetailModalOpen(false)}
         task={selectedTask}
         workspaceId={workspaceId}
+        minDate={sprintMinDate}
+        maxDate={sprintMaxDate}
         hasPrev={selectedTaskIndex > 0}
         hasNext={selectedTaskIndex >= 0 && selectedTaskIndex < currentTaskList.length - 1}
         onPrev={() => navigateTask('prev')}
@@ -754,14 +853,45 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
           void loadBoard();
           showSnackbar('태스크 변경사항을 반영했습니다.', 'success');
         }}
+        onDeleted={() => {
+          setDetailModalOpen(false);
+          setSelectedTask(null);
+          void loadBoard();
+        }}
         workspaceMembers={workspaceMembers}
         memberDisplayNameMap={memberDisplayNameMap}
+      />
+      <TaskCreateModal
+        open={Boolean(createTaskProjectId)}
+        onClose={() => setCreateTaskProjectId(null)}
+        workspaceId={workspaceId}
+        projectId={createTaskProjectId}
+        minDate={sprintMinDate}
+        maxDate={sprintMaxDate}
+        defaultStatus="TODO"
+        onSuccess={() => {
+          setCreateTaskProjectId(null);
+          void loadBoard();
+        }}
       />
       <Snackbar
         open={snackbarOpen}
         message={snackbarMessage}
         variant={snackbarVariant}
         onClose={() => setSnackbarOpen(false)}
+      />
+      <DeleteReasonDialog
+        open={Boolean(pendingDeleteTask)}
+        onClose={() => {
+          if (!deletingTaskId) setPendingDeleteTask(null);
+        }}
+        onConfirm={handleDeleteTask}
+        loading={Boolean(deletingTaskId)}
+        description={
+          pendingDeleteTask
+            ? `'${pendingDeleteTask.title}' 태스크를 삭제하는 사유를 입력해 주세요.`
+            : '삭제 사유를 입력해 주세요.'
+        }
       />
     </div>
   );

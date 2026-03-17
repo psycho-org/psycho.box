@@ -6,6 +6,7 @@ import { Button, DatePicker, TaskStatusDot } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 import { TASK_STATUS_LABELS, type TaskStatus } from '@/lib/task-status';
+import { fetchWorkspaceMembers, type WorkspaceMemberDisplaySource } from '@/lib/workspace-member-display';
 
 const STATUS_OPTIONS: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE', 'CANCELLED', 'BACKLOG'];
 
@@ -13,6 +14,9 @@ interface TaskCreateModalProps {
   open: boolean;
   onClose: () => void;
   workspaceId: string;
+  projectId?: string | null;
+  minDate?: string;
+  maxDate?: string;
   /** 해당 칸반 컬럼의 status (생성 시 이 상태로 매핑) */
   defaultStatus: TaskStatus;
   onSuccess?: () => void;
@@ -22,6 +26,9 @@ export function TaskCreateModal({
   open,
   onClose,
   workspaceId,
+  projectId = null,
+  minDate,
+  maxDate,
   defaultStatus,
   onSuccess,
 }: TaskCreateModalProps) {
@@ -32,6 +39,8 @@ export function TaskCreateModal({
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [members, setMembers] = useState<WorkspaceMemberDisplaySource[]>([]);
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +62,31 @@ export function TaskCreateModal({
   useEffect(() => {
     if (open) setStatus(defaultStatus);
   }, [open, defaultStatus]);
+
+  useEffect(() => {
+    if (!open || !workspaceId) return;
+
+    let cancelled = false;
+    setMembersLoading(true);
+
+    fetchWorkspaceMembers(workspaceId)
+      .then((nextMembers) => {
+        if (cancelled) return;
+        setMembers(nextMembers);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMembers([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setMembersLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, workspaceId]);
 
   function handleClose() {
     if (!loading) {
@@ -85,7 +119,9 @@ export function TaskCreateModal({
     if (dueDate) createBody.dueDate = `${dueDate}T23:59:59.000Z`;
 
     const createResult = await apiRequest<{ id: string }>(
-      `/api/real/workspaces/${workspaceId}/tasks`,
+      projectId
+        ? `/api/real/workspaces/${workspaceId}/projects/${projectId}/tasks`
+        : `/api/real/workspaces/${workspaceId}/tasks`,
       {
         method: 'POST',
         body: JSON.stringify(createBody),
@@ -120,7 +156,7 @@ export function TaskCreateModal({
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} title="태스크 추가">
+    <Dialog open={open} onClose={handleClose} title={projectId ? '프로젝트 태스크 추가' : '태스크 추가'}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div>
           <label htmlFor="task-title" className="block text-[13px] font-medium text-text-soft mb-1.5">
@@ -203,17 +239,25 @@ export function TaskCreateModal({
         </div>
         <div>
           <label htmlFor="task-assignee" className="block text-[13px] font-medium text-text-soft mb-1.5">
-            담당자 ID
+            담당자
           </label>
-          <input
+          <select
             id="task-assignee"
-            type="text"
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
-            placeholder="UUID (선택)"
-            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] font-mono placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-            disabled={loading}
-          />
+            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-60"
+            disabled={loading || membersLoading}
+          >
+            <option value="">
+              {membersLoading ? '멤버 불러오는 중...' : '담당자 없음'}
+            </option>
+            {members.map((member) => (
+              <option key={member.membershipId ?? member.accountId} value={member.accountId}>
+                {member.name}
+                {member.role ? ` (${member.role})` : ''}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-[13px] font-medium text-text-soft mb-1.5">
@@ -223,6 +267,8 @@ export function TaskCreateModal({
             mode="single"
             value={dueDate || null}
             onChange={(v) => setDueDate(v ? (v as string) : '')}
+            minDate={minDate}
+            maxDate={maxDate}
             placeholder="날짜 선택"
             disabled={loading}
           />
