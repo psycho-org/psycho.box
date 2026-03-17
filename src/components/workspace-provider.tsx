@@ -36,8 +36,12 @@ export function WorkspaceProvider({
       `/api/real/workspaces/${workspaceId}`,
     ).then((result) => {
       if (result.ok && result.data) {
-        setWorkspaceName(result.data.name ?? result.data.title ?? null);
+        setWorkspaceName(result.data.name ?? result.data.title ?? '워크스페이스');
+      } else {
+        setWorkspaceName('워크스페이스');
       }
+    }).catch(() => {
+      setWorkspaceName('워크스페이스');
     });
   }, [workspaceId]);
 
