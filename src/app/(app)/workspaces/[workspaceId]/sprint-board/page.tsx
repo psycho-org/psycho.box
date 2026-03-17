@@ -472,6 +472,11 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
   const sprintMaxDate = selectedSprint?.endDate?.slice(0, 10);
 
   useEffect(() => {
+    if (selectedSprintId || sprints.length === 0) return;
+    setSelectedSprintId(sprints[0]?.sprintId ?? null);
+  }, [sprints, selectedSprintId]);
+
+  useEffect(() => {
     if (!editSprintOpen || !selectedSprint) return;
     setSprintNameDraft(selectedSprint.name);
     setSprintGoalDraft(selectedSprint.goal ?? '');
