@@ -9,6 +9,8 @@ interface Task {
   title: string;
   status: TaskStatus;
   dueDate?: string | null;
+  sprintStartDate?: string | null;
+  sprintEndDate?: string | null;
   assignee?: { id: string; name: string } | null;
 }
 
@@ -35,6 +37,11 @@ function toDateStr(d: Date): string {
 function parseDateStr(s: string): Date {
   const [y, m, d] = s.split('-').map(Number);
   return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function normalizeDateKey(value?: string | null): string | null {
+  if (!value) return null;
+  return value.slice(0, 10);
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -139,11 +146,6 @@ export function TaskRoadmap({
         unscheduled.push(t);
       }
     }
-    scheduled.sort((a, b) => {
-      const da = a.dueDate!;
-      const db = b.dueDate!;
-      return da.localeCompare(db);
-    });
     return { scheduledTasks: scheduled, unscheduledTasks: unscheduled };
   }, [tasks]);
 
@@ -188,9 +190,9 @@ export function TaskRoadmap({
     return groups;
   }, [dateColumns]);
 
-  const totalDays = dateColumns.length;
-
   const dayWidth = 24;
+  const totalDays = dateColumns.length;
+  const timelineWidth = totalDays * dayWidth;
   const todayLineOffset = useMemo(() => {
     const todayIndex = dateColumns.findIndex((col) => col.isToday);
     if (todayIndex < 0) return null;
@@ -296,6 +298,53 @@ export function TaskRoadmap({
     }
   });
 
+  const getAllowedRangeForTask = useCallback((task: Task) => {
+    const startKey = normalizeDateKey(task.sprintStartDate);
+    const endKey = normalizeDateKey(task.sprintEndDate);
+    return { startKey, endKey };
+  }, []);
+
+  const isDateAllowedForTask = useCallback(
+    (task: Task, dateKey: string) => {
+      const { startKey, endKey } = getAllowedRangeForTask(task);
+      if (startKey && dateKey < startKey) return false;
+      if (endKey && dateKey > endKey) return false;
+      return true;
+    },
+    [getAllowedRangeForTask],
+  );
+
+  const getUnavailableSegments = useCallback(
+    (task: Task) => {
+      const { startKey, endKey } = getAllowedRangeForTask(task);
+      if (!startKey && !endKey) return [];
+      if (dateColumns.length === 0) return [];
+
+      const viewStartKey = dateColumns[0]?.key;
+      const viewEndKey = dateColumns[dateColumns.length - 1]?.key;
+      if (!viewStartKey || !viewEndKey) return [];
+
+      const segments: Array<{ left: number; width: number }> = [];
+      if (startKey && startKey > viewStartKey) {
+        const disabledDaysBefore = Math.min(daysBetween(parseDateStr(viewStartKey), parseDateStr(startKey)), totalDays);
+        if (disabledDaysBefore > 0) {
+          segments.push({ left: 0, width: disabledDaysBefore * dayWidth });
+        }
+      }
+      if (endKey && endKey < viewEndKey) {
+        const disabledStartIndex = Math.max(daysBetween(parseDateStr(viewStartKey), parseDateStr(endKey)) + 1, 0);
+        if (disabledStartIndex < totalDays) {
+          segments.push({
+            left: disabledStartIndex * dayWidth,
+            width: timelineWidth - disabledStartIndex * dayWidth,
+          });
+        }
+      }
+      return segments.filter((segment) => segment.width > 0);
+    },
+    [dateColumns, dayWidth, getAllowedRangeForTask, timelineWidth, totalDays],
+  );
+
   function getBarStyle(task: Task): { left: number; width: number } | null {
     if (!task.dueDate) return null;
     const due = parseDateStr(task.dueDate.slice(0, 10));
@@ -338,6 +387,11 @@ export function TaskRoadmap({
     event.dataTransfer.dropEffect = 'move';
     const dateKey = getDateKeyFromPointer(event.clientX, event.currentTarget);
     if (!dateKey) return;
+    const draggedTask = tasks.find((task) => task.id === taskId);
+    if (draggedTask && !isDateAllowedForTask(draggedTask, dateKey)) {
+      setDragOver((prev) => (prev?.rowTaskId === rowTaskId ? null : prev));
+      return;
+    }
     setDragOver({ rowTaskId, dateKey });
   }
 
@@ -360,6 +414,8 @@ export function TaskRoadmap({
     setDragOver(null);
 
     if (!taskId || !dateKey) return;
+    const draggedTask = tasks.find((task) => task.id === taskId);
+    if (draggedTask && !isDateAllowedForTask(draggedTask, dateKey)) return;
     await onTaskDueDateChange(taskId, dateKey);
   }
 
@@ -371,6 +427,11 @@ export function TaskRoadmap({
     if (addingDueDateTaskId) return;
     const dateKey = getDateKeyFromPointer(event.clientX, event.currentTarget);
     if (!dateKey) return;
+    const hoveredTask = tasks.find((item) => item.id === taskId);
+    if (hoveredTask && !isDateAllowedForTask(hoveredTask, dateKey)) {
+      setUnscheduledHover((prev) => (prev?.taskId === taskId ? null : prev));
+      return;
+    }
     setUnscheduledHover((prev) => {
       if (prev?.taskId === taskId && prev.dateKey === dateKey) return prev;
       return { taskId, dateKey };
@@ -389,6 +450,8 @@ export function TaskRoadmap({
     event.preventDefault();
     event.stopPropagation();
     if (!onTaskDueDateChange) return;
+    const task = tasks.find((item) => item.id === taskId);
+    if (task && !isDateAllowedForTask(task, dateKey)) return;
     setAddingDueDateTaskId(taskId);
     try {
       await onTaskDueDateChange(taskId, dateKey);
@@ -611,6 +674,14 @@ export function TaskRoadmap({
                     void handleTimelineRowDrop(event, task.id);
                   }}
                 >
+                  {getUnavailableSegments(task).map((segment, index) => (
+                    <span
+                      key={`${task.id}-scheduled-disabled-${index}`}
+                      aria-hidden
+                      className="pointer-events-none absolute inset-y-0 z-0 bg-surface-3/55"
+                      style={{ left: segment.left, width: segment.width }}
+                    />
+                  ))}
                   {dragOverLeft !== null ? (
                     <>
                       <span
@@ -668,6 +739,14 @@ export function TaskRoadmap({
                   onMouseMove={(event) => handleUnscheduledRowMouseMove(event, task.id)}
                   onMouseLeave={() => handleUnscheduledRowMouseLeave(task.id)}
                 >
+                  {getUnavailableSegments(task).map((segment, index) => (
+                    <span
+                      key={`${task.id}-unscheduled-disabled-${index}`}
+                      aria-hidden
+                      className="pointer-events-none absolute inset-y-0 z-0 bg-surface-3/55"
+                      style={{ left: segment.left, width: segment.width }}
+                    />
+                  ))}
                   {hoverLeft !== null && hoveredDateKey && onTaskDueDateChange ? (
                     <button
                       type="button"

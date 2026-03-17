@@ -37,7 +37,14 @@ interface Task {
   dueDate?: string | null;
   assignee?: { id: string; name: string; email: string } | null;
   sprintId?: string | null;
+  sprintStartDate?: string | null;
   sprintEndDate?: string | null;
+}
+
+interface SprintSummary {
+  sprintId?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 /** 마감일 지남(주황) / 스프린트 종료(빨강) 여부 */
@@ -206,23 +213,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const [assigneePanelCollapsed, setAssigneePanelCollapsed] = useState(false);
   const [assigneeToggleButtonLeft, setAssigneeToggleButtonLeft] = useState<number | null>(null);
   const assigneePanelRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!workspaceId) return;
-    apiRequest<{ sprintId?: string; endDate?: string }[]>(
-      `/api/real/workspaces/${workspaceId}/sprints`,
-    )
-      .then((result) => {
-        const raw = result.data;
-        const list = Array.isArray(raw) ? raw : [];
-        const withEndDate = list.filter((s) => s?.endDate);
-        const sorted = withEndDate.sort(
-          (a, b) => new Date(b!.endDate!).getTime() - new Date(a!.endDate!).getTime(),
-        );
-        setSprintEndDate(sorted[0]?.endDate ?? null);
-      })
-      .catch(() => setSprintEndDate(null));
-  }, [workspaceId]);
 
   /** 담당자별 목록 (id, name, count) + 담당자 없음. id별로 다른 색을 위해 유효한 id가 있으면 그대로, 없으면 taskId 기반 고유 키 사용 */
   const assigneeList = useMemo(() => {
@@ -419,9 +409,10 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
     setLoading(true);
     Promise.all([
       apiRequest<Task[]>(`/api/real/workspaces/${workspaceId}/tasks?page=1&size=100`),
+      apiRequest<SprintSummary[]>(`/api/real/workspaces/${workspaceId}/sprints`),
       fetchWorkspaceMembers(workspaceId),
     ])
-      .then(([result, members]) => {
+      .then(([result, sprintResult, members]) => {
         const nextMemberDisplayNameMap = Object.fromEntries(
           members
             .map((member) => [member.accountId?.trim(), member.name?.trim()] as const)
@@ -429,9 +420,37 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
         ) as WorkspaceMemberDisplayNameMap;
         setWorkspaceMembers(members);
         setMemberDisplayNameMap(nextMemberDisplayNameMap);
+
+        const rawSprints = sprintResult.data;
+        const sprintList = Array.isArray(rawSprints) ? rawSprints : [];
+        const sprintRangeById = Object.fromEntries(
+          sprintList
+            .filter((sprint) => sprint?.sprintId)
+            .map((sprint) => [
+              sprint.sprintId!,
+              {
+                startDate: sprint.startDate ?? null,
+                endDate: sprint.endDate ?? null,
+              },
+            ]),
+        ) as Record<string, { startDate: string | null; endDate: string | null }>;
+        const withEndDate = sprintList.filter((sprint) => sprint?.endDate);
+        const sorted = withEndDate.sort(
+          (a, b) => new Date(b!.endDate!).getTime() - new Date(a!.endDate!).getTime(),
+        );
+        setSprintEndDate(sorted[0]?.endDate ?? null);
+
         if (result.ok) {
           const list = Array.isArray(result.data) ? result.data : [];
-          setTasks(applyWorkspaceMemberDisplayNamesToTasks(list, nextMemberDisplayNameMap));
+          const tasksWithSprintRanges = list.map((task) => {
+            const sprintRange = task.sprintId ? sprintRangeById[task.sprintId] : undefined;
+            return {
+              ...task,
+              sprintStartDate: sprintRange?.startDate ?? null,
+              sprintEndDate: sprintRange?.endDate ?? task.sprintEndDate ?? null,
+            };
+          });
+          setTasks(applyWorkspaceMemberDisplayNamesToTasks(tasksWithSprintRanges, nextMemberDisplayNameMap));
           setError(null);
         } else {
           setError(result.message ?? '태스크를 불러오지 못했습니다.');
