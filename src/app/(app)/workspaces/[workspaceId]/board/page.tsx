@@ -1,17 +1,16 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePageTitle } from '@/components/page-title-context';
 import { TaskStatusDot, CollapsibleTableList } from '@/components/ui';
-import { TodoCard } from '@/components/todo-card';
 import { TodoCardList } from '@/components/todo-card-list';
 import { TaskCreateModal } from '@/components/task-create-modal';
 import { TaskDetailModal, type TaskDetailModalTask } from '@/components/task-detail-modal';
 import { TaskRoadmap } from '@/components/task-roadmap';
 import { apiRequest } from '@/lib/client';
-import { USER_ID_COOKIE } from '@/lib/cookies';
 import { getErrorMessage } from '@/lib/error-messages';
+import { useAuth } from '@/components/auth-provider';
 import type { TaskStatus } from '@/lib/task-status';
 import { TASK_STATUS_COLORS } from '@/lib/task-status';
 import {
@@ -21,13 +20,23 @@ import {
   type WorkspaceMemberDisplayNameMap,
   type WorkspaceMemberDisplaySource,
 } from '@/lib/workspace-member-display';
+import { KanbanColumn } from './_components/kanban-column';
+import { AssigneeSidebar, colorFromId, type AssigneeFilterKey } from './_components/assignee-sidebar';
 
 type BoardView = 'sprint' | 'assignee' | 'my' | 'roadmap';
 
-function getCurrentUserId(): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp(`${USER_ID_COOKIE}=([^;]+)`));
-  return match?.[1]?.trim() ?? null;
+/** 제목에서 [TAG] 패턴 추출 */
+function parseTagsFromTitle(title: string): { tags: string[]; displayTitle: string } {
+  const tags: string[] = [];
+  let rest = title;
+  const match = rest.match(/^(\[[A-Za-z0-9_-]+\]\s*)+/);
+  if (match) {
+    const prefix = match[0];
+    rest = rest.slice(prefix.length).trim();
+    const tagMatches = prefix.matchAll(/\[([A-Za-z0-9_-]+)\]/g);
+    for (const m of tagMatches) tags.push(m[1]);
+  }
+  return { tags, displayTitle: rest || title };
 }
 
 interface Task {
@@ -84,111 +93,11 @@ const COLUMNS: { label: string; status: TaskStatus }[] = [
   { label: '완료', status: 'DONE' },
 ];
 
-/** 제목에서 [TAG] 패턴 추출 */
-function parseTagsFromTitle(title: string): { tags: string[]; displayTitle: string } {
-  const tags: string[] = [];
-  let rest = title;
-  const match = rest.match(/^(\[[A-Za-z0-9_-]+\]\s*)+/);
-  if (match) {
-    const prefix = match[0];
-    rest = rest.slice(prefix.length).trim();
-    const tagMatches = prefix.matchAll(/\[([A-Za-z0-9_-]+)\]/g);
-    for (const m of tagMatches) tags.push(m[1]);
-  }
-  return { tags, displayTitle: rest || title };
-}
-
-const TAG_COLORS: Record<string, string> = {
-  FEAT: 'bg-blue/20 text-blue border-blue/30',
-  FIX: 'bg-red/20 text-red border-red/30',
-  REFACTOR: 'bg-purple/20 text-purple border-purple/30',
-  DOCS: 'bg-green/20 text-green border-green/30',
-  TEST: 'bg-orange/20 text-orange border-orange/30',
-  DEFAULT: 'bg-surface-3 text-text-soft border-line',
-};
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
-
-function MoreIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="19" cy="12" r="1" />
-      <circle cx="5" cy="12" r="1" />
-    </svg>
-  );
-}
-
-function PanelToggleIcon({ className, collapsed }: { className?: string; collapsed: boolean }) {
-  return (
-    <svg
-      className={`${className} transition-transform ${collapsed ? 'rotate-180' : ''}`}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m15 18-6-6 6-6" />
-    </svg>
-  );
-}
-
-function ChevronIcon({ className, expanded }: { className?: string; expanded: boolean }) {
-  return (
-    <svg
-      className={`${className} transition-transform ${expanded ? 'rotate-90' : ''}`}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  );
-}
-
-/** ID 기반 고정 색상 (같은 ID면 항상 같은 색) */
-function colorFromId(id: string): string {
-  const hue = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
-  return `hsl(${hue}, 55%, 45%)`;
-}
-
-function AssigneeAvatar({
-  assignee,
-  className,
-}: {
-  assignee?: { id: string; name: string } | null;
-  className?: string;
-}) {
-  const initials = assignee?.name
-    ? assignee.name.slice(0, 2).toUpperCase()
-    : '?';
-  const bgColor = assignee ? colorFromId(assignee.id) : 'var(--color-surface-3)';
-  return (
-    <div
-      className={`shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-surface shadow-sm ${assignee ? 'text-white' : 'text-text-dim'} ${className ?? 'size-8'}`}
-      style={{ backgroundColor: bgColor }}
-      title={assignee?.name ?? '담당자 없음'}
-    >
-      {initials}
-    </div>
-  );
-}
-
-/** 담당자별 그룹 키: assignee.id 또는 'none' (담당자 없음) */
-type AssigneeFilterKey = string | 'none';
 
 export default function BoardPage({ params }: { params: Promise<{ workspaceId: string }> }) {
   const { workspaceId } = use(params);
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -204,17 +113,15 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const displayParam = searchParams.get('display');
   const display = displayParam === 'list' ? 'list' : displayParam === 'card' ? 'card' : 'kanban';
   const [selectedAssignee, setSelectedAssignee] = useState<AssigneeFilterKey | null>(null);
-  const [currentUserId] = useState<string | null>(() => getCurrentUserId());
+
   const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberDisplaySource[]>([]);
   const [memberDisplayNameMap, setMemberDisplayNameMap] = useState<WorkspaceMemberDisplayNameMap>({});
   const [assigneePanelCollapsed, setAssigneePanelCollapsed] = useState(false);
-  const [assigneeToggleButtonLeft, setAssigneeToggleButtonLeft] = useState<number | null>(null);
-  const assigneePanelRef = useRef<HTMLElement | null>(null);
 
-  /** 담당자별 목록 (id, name, count) + 담당자 없음. id별로 다른 색을 위해 유효한 id가 있으면 그대로, 없으면 taskId 기반 고유 키 사용 */
+/** 담당자별 목록 (id, name, count) + 담당자 없음. id별로 다른 색을 위해 유효한 id가 있으면 그대로, 없으면 taskId 기반 고유 키 사용 */
   const assigneeList = useMemo(() => {
     const map = new Map<string, { id: string; name: string; count: number }>();
     let noAssigneeCount = 0;
@@ -562,38 +469,6 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
 
   const showAssigneeSidebar = view === 'assignee' && !loading && !error && display !== 'card' && display !== 'list';
 
-  useEffect(() => {
-    if (!showAssigneeSidebar) {
-      setAssigneeToggleButtonLeft(null);
-      return;
-    }
-
-    function updateToggleButtonLeft() {
-      const panelRect = assigneePanelRef.current?.getBoundingClientRect();
-      if (!panelRect) return;
-      setAssigneeToggleButtonLeft(panelRect.right);
-    }
-
-    updateToggleButtonLeft();
-    const panelElement = assigneePanelRef.current;
-    const resizeObserver =
-      panelElement && typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(() => updateToggleButtonLeft())
-        : null;
-
-    if (panelElement && resizeObserver) {
-      resizeObserver.observe(panelElement);
-    }
-
-    window.addEventListener('resize', updateToggleButtonLeft);
-    window.addEventListener('scroll', updateToggleButtonLeft, { passive: true });
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', updateToggleButtonLeft);
-      window.removeEventListener('scroll', updateToggleButtonLeft);
-    };
-  }, [showAssigneeSidebar, assigneePanelCollapsed]);
-
   return (
     <>
     <section className="bg-surface border border-line/40 rounded-2xl p-5 shadow-sm">
@@ -679,301 +554,56 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
           </div>
         ) : view === 'assignee' ? (
           <div className="relative flex flex-col gap-4 lg:flex-row">
-            <aside
-              ref={assigneePanelRef}
-              className={`hidden overflow-hidden transition-all duration-200 lg:flex lg:flex-col ${
-                assigneePanelCollapsed
-                  ? 'lg:w-4 lg:items-center lg:justify-center bg-transparent border-transparent shadow-none'
-                  : 'lg:w-56 rounded-2xl border border-line/40 bg-surface-2/30'
-              }`}
-            >
-              {assigneePanelCollapsed ? (
-                <div className="h-full w-px rounded-full bg-line/60" />
-              ) : (
-                <>
-                  <div className="border-b border-line/50 px-4 py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="m-0 text-[14px] font-semibold text-text">담당자</h3>
-                      <span className="text-[12px] text-text-dim">{assigneeCount}</span>
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAssignee(null)}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
-                      selectedAssignee === null
-                        ? 'bg-accent-dim text-accent-soft'
-                        : 'hover:bg-surface-2 text-text'
-                    }`}
-                  >
-                    <span className="text-text-dim tabular-nums shrink-0">전체</span>
-                    <span className="tabular-nums text-text-dim">({assigneeCount})</span>
-                  </button>
-                  {assigneeList.list.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => setSelectedAssignee(a.id)}
-                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
-                        selectedAssignee === a.id
-                          ? 'bg-accent-dim text-accent-soft'
-                          : 'hover:bg-surface-2 text-text'
-                      }`}
-                    >
-                      <AssigneeAvatar
-                        assignee={{ id: a.id, name: a.name }}
-                        className="size-6"
-                      />
-                      <span className="min-w-0 truncate flex-1">{a.name}</span>
-                      <span className="tabular-nums text-text-dim shrink-0">{a.count}</span>
-                    </button>
-                  ))}
-                  {assigneeList.noAssigneeCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedAssignee('none')}
-                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-[13px] transition-colors ${
-                        selectedAssignee === 'none'
-                          ? 'bg-accent-dim text-accent-soft'
-                          : 'hover:bg-surface-2 text-text'
-                      }`}
-                    >
-                      <AssigneeAvatar assignee={null} className="size-6" />
-                      <span className="min-w-0 truncate flex-1">담당자 없음</span>
-                      <span className="tabular-nums text-text-dim shrink-0">
-                        {assigneeList.noAssigneeCount}
-                      </span>
-                    </button>
-                  )}
-                  </div>
-                </>
-              )}
-            </aside>
-            <div className="lg:hidden rounded-2xl border border-line/40 bg-surface-2/30">
-              <div className="border-b border-line/50 px-4 py-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="m-0 text-[14px] font-semibold text-text">담당자</h3>
-                  <span className="text-[12px] text-text-dim">{assigneeCount}</span>
-                </div>
-              </div>
-              <div className="flex gap-2 overflow-x-auto px-3 py-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedAssignee(null)}
-                  className={`flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-left transition-colors ${
-                    selectedAssignee === null
-                      ? 'border-accent/30 bg-accent-dim/30 text-accent-soft'
-                      : 'border-line/50 bg-surface text-text'
-                  }`}
-                >
-                  <span className="inline-flex size-7 items-center justify-center rounded-full bg-surface-3 text-[11px] font-semibold text-text-dim">
-                    전
-                  </span>
-                  <span className="text-[12px] font-medium">전체</span>
-                </button>
-                {assigneeList.list.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => setSelectedAssignee(a.id)}
-                    className={`flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-left transition-colors ${
-                      selectedAssignee === a.id
-                        ? 'border-accent/30 bg-accent-dim/30 text-accent-soft'
-                        : 'border-line/50 bg-surface text-text'
-                    }`}
-                  >
-                    <AssigneeAvatar assignee={{ id: a.id, name: a.name }} className="size-7" />
-                    <div className="min-w-0">
-                      <div className="max-w-[88px] truncate text-[12px] font-medium">{a.name}</div>
-                      <div className="text-[11px] text-text-dim">{a.count}</div>
-                    </div>
-                  </button>
-                ))}
-                {assigneeList.noAssigneeCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAssignee('none')}
-                    className={`flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-left transition-colors ${
-                      selectedAssignee === 'none'
-                        ? 'border-accent/30 bg-accent-dim/30 text-accent-soft'
-                        : 'border-line/50 bg-surface text-text'
-                    }`}
-                  >
-                    <AssigneeAvatar assignee={null} className="size-7" />
-                    <div className="min-w-0">
-                      <div className="max-w-[88px] truncate text-[12px] font-medium">담당자 없음</div>
-                      <div className="text-[11px] text-text-dim">{assigneeList.noAssigneeCount}</div>
-                    </div>
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            {assigneeToggleButtonLeft !== null ? (
-              <button
-                type="button"
-                onClick={() => setAssigneePanelCollapsed((prev) => !prev)}
-                className="fixed top-[50svh] z-20 hidden -translate-x-1/2 -translate-y-1/2 group lg:flex h-28 w-2.5 items-center justify-center rounded-full border border-line/60 bg-surface/88 text-text-dim shadow-sm backdrop-blur transition-[width,background-color,border-color,color] duration-200 hover:w-3 hover:border-accent/40 hover:bg-surface-2 hover:text-text"
-                style={{ left: assigneeToggleButtonLeft }}
-                aria-label={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
-                title={assigneePanelCollapsed ? '담당자 패널 펼치기' : '담당자 패널 접기'}
-              >
-                <PanelToggleIcon className="size-3.5 group-hover:scale-110" collapsed={assigneePanelCollapsed} />
-              </button>
-            ) : null}
-            {/* 담당자별 태스크 보드 */}
+            <AssigneeSidebar
+              assigneeList={assigneeList.list}
+              noAssigneeCount={assigneeList.noAssigneeCount}
+              selectedAssignee={selectedAssignee}
+              collapsed={assigneePanelCollapsed}
+              onSelect={setSelectedAssignee}
+              onCollapsedChange={setAssigneePanelCollapsed}
+            />
             <div className="flex-1 min-w-0">
               <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-1">
-                {COLUMNS.map(({ label, status }) => {
-                  const items = tasksByStatus(status);
-                  return (
-                    <div
-                      key={status}
-                      className="flex flex-col min-w-0 rounded-2xl bg-surface border border-line/40 overflow-hidden"
-                    >
-                      <div className="flex items-start justify-between gap-2 border-b border-line p-4">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <TaskStatusDot status={status} className="size-2.5" />
-                            <h4 className="m-0 text-[14px] font-semibold text-text truncate flex items-center gap-1.5">
-                              {label}
-                              <span className="text-[12px] font-normal text-text-dim tabular-nums">
-                                {items.length}
-                              </span>
-                            </h4>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => openCreateModal(status)}
-                          className="shrink-0 rounded-lg p-1.5 text-text-dim hover:bg-accent-dim hover:text-accent-soft"
-                          aria-label="태스크 추가"
-                        >
-                          <PlusIcon className="size-4" />
-                        </button>
-                      </div>
-                      <div
-                        className={`flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px] transition-colors ${
-                          dragOverStatus === status ? 'bg-accent-dim/30' : ''
-                        }`}
-                        onDragOver={(event) => handleColumnDragOver(event, status)}
-                        onDrop={(event) => {
-                          void handleColumnDrop(event, status);
-                        }}
-                      >
-                        {items.map((task) => (
-                          <div
-                            key={task.id}
-                            draggable
-                            onDragStart={(event) => handleTaskDragStart(event, task.id)}
-                            onDragEnd={handleTaskDragEnd}
-                            className={`cursor-grab active:cursor-grabbing ${
-                              draggingTaskId === task.id ? 'opacity-60' : ''
-                            }`}
-                          >
-                            <div 
-                              role="button" 
-                              tabIndex={0} 
-                              className="cursor-pointer rounded-xl transition-all duration-200 hover:bg-surface-2/60 hover:scale-[1.01] hover:shadow-sm"
-                              onClick={() => openDetailModal(toTodoCardTask(task))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  openDetailModal(toTodoCardTask(task));
-                                }
-                              }}
-                            >
-                              <TodoCard task={toTodoCardTask(task)} sprintEndDate={sprintEndDate} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+                {COLUMNS.map(({ label, status }) => (
+                  <KanbanColumn
+                    key={status}
+                    label={label}
+                    status={status}
+                    tasks={tasksByStatus(status)}
+                    sprintEndDate={sprintEndDate}
+                    draggingTaskId={draggingTaskId}
+                    dragOverStatus={dragOverStatus}
+                    onCreateTask={openCreateModal}
+                    onTaskClick={openDetailModal}
+                    onDragStart={handleTaskDragStart}
+                    onDragEnd={handleTaskDragEnd}
+                    onDragOver={handleColumnDragOver}
+                    onDrop={handleColumnDrop}
+                  />
+                ))}
               </div>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-1">
-            {COLUMNS.map(({ label, status }) => {
-              const items = tasksByStatus(status);
-              return (
-                <div
-                  key={status}
-                  className="flex flex-col min-w-0 rounded-2xl bg-surface border border-line/40 overflow-hidden"
-                >
-                  {/* 컬럼 헤더 */}
-                  <div className="flex items-start justify-between gap-2 border-b border-line p-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <TaskStatusDot status={status} className="size-2.5" />
-                        <h4 className="m-0 text-[14px] font-semibold text-text truncate flex items-center gap-1.5">
-                          {label}
-                          <span className="text-[12px] font-normal text-text-dim tabular-nums">
-                            {items.length}
-                          </span>
-                        </h4>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        className="p-1.5 rounded-lg hover:bg-surface-3 text-text-dim"
-                        aria-label="더보기"
-                      >
-                        <MoreIcon className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openCreateModal(status)}
-                        className="p-1.5 rounded-lg hover:bg-accent-dim text-text-dim hover:text-accent-soft"
-                        aria-label="태스크 추가"
-                      >
-                        <PlusIcon className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                  {/* 카드 목록 */}
-                  <div
-                    className={`flex-1 p-3 space-y-2.5 overflow-y-auto min-h-[120px] transition-colors ${
-                      dragOverStatus === status ? 'bg-accent-dim/30' : ''
-                    }`}
-                    onDragOver={(event) => handleColumnDragOver(event, status)}
-                    onDrop={(event) => {
-                      void handleColumnDrop(event, status);
-                    }}
-                  >
-                    {items.map((task) => (
-                      <div
-                        key={task.id}
-                        draggable
-                        onDragStart={(event) => handleTaskDragStart(event, task.id)}
-                        onDragEnd={handleTaskDragEnd}
-                        className={`cursor-grab active:cursor-grabbing ${
-                          draggingTaskId === task.id ? 'opacity-60' : ''
-                        }`}
-                      >
-                            <div 
-                              role="button" 
-                              tabIndex={0} 
-                              className="cursor-pointer rounded-xl transition-all duration-200 hover:bg-surface-2/60 hover:scale-[1.01] hover:shadow-sm"
-                              onClick={() => openDetailModal(toTodoCardTask(task))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  openDetailModal(toTodoCardTask(task));
-                                }
-                              }}
-                            >
-                              <TodoCard task={toTodoCardTask(task)} sprintEndDate={sprintEndDate} />
-                            </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+            {COLUMNS.map(({ label, status }) => (
+              <KanbanColumn
+                key={status}
+                label={label}
+                status={status}
+                tasks={tasksByStatus(status)}
+                sprintEndDate={sprintEndDate}
+                draggingTaskId={draggingTaskId}
+                dragOverStatus={dragOverStatus}
+                showMoreButton
+                onCreateTask={openCreateModal}
+                onTaskClick={openDetailModal}
+                onDragStart={handleTaskDragStart}
+                onDragEnd={handleTaskDragEnd}
+                onDragOver={handleColumnDragOver}
+                onDrop={handleColumnDrop}
+              />
+            ))}
           </div>
         )}
       </section>

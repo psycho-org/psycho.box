@@ -44,7 +44,7 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
       }}
     >
       <div
-        className="max-h-[calc(100svh-0.5rem)] w-full max-w-[420px] overflow-y-auto rounded-[20px] border border-line bg-surface p-5 shadow-[0_24px_60px_rgba(0,0,0,0.45)] sm:max-h-[calc(100svh-2rem)] sm:rounded-[14px] sm:p-6"
+        className="max-h-[calc(100svh-0.5rem)] w-full max-w-[420px] overflow-y-auto rounded-card-lg border border-line bg-surface p-5 shadow-overlay sm:max-h-[calc(100svh-2rem)] sm:rounded-card sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {title && (

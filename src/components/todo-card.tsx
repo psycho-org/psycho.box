@@ -139,7 +139,7 @@ export function TodoCard({ task, sprintEndDate, statusBarColor, className = '' }
                 ) : (
                   <ClockIcon className="size-3.5 shrink-0 opacity-60" />
                 )}
-                <span className="truncate">{dueDateLabel}</span>
+                <span className="truncate leading-none">{dueDateLabel}</span>
               </span>
             )}
           </div>

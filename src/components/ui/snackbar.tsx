@@ -47,7 +47,7 @@ export function Snackbar({
       }`}
     >
       <span
-        className={`flex-1 text-[14px] ${
+        className={`flex-1 text-sm ${
           variant === 'success' ? 'text-green' : variant === 'error' ? 'text-red' : 'text-text'
         }`}
       >

@@ -72,7 +72,7 @@ export function SearchInput({
         type="search"
         role="searchbox"
         aria-label="검색"
-        className="w-full min-w-[200px] border border-line rounded-[10px] bg-surface-2 text-text py-2.5 pl-10 pr-10 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
+        className="w-full min-w-[200px] border border-line rounded-input bg-surface-2 text-text py-2.5 pl-10 pr-10 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
         value={value}
         onChange={handleChange}
         placeholder={placeholder}

@@ -4,6 +4,7 @@ import { use } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { PageTitleProvider } from '@/components/page-title-context';
+import { WorkspaceProvider } from '@/components/workspace-provider';
 
 const VIEW_TITLES: Record<string, string> = {
   sprint: '태스크',
@@ -38,10 +39,12 @@ export default function WorkspaceLayout({
   const initialTitle = getTitleFromPath(pathname ?? '', workspaceId, view);
 
   return (
-    <PageTitleProvider initialTitle={initialTitle}>
-      <AppShell workspaceId={workspaceId} workspaceName="워크스페이스">
-        {children}
-      </AppShell>
-    </PageTitleProvider>
+    <WorkspaceProvider workspaceId={workspaceId}>
+      <PageTitleProvider initialTitle={initialTitle}>
+        <AppShell>
+          {children}
+        </AppShell>
+      </PageTitleProvider>
+    </WorkspaceProvider>
   );
 }
