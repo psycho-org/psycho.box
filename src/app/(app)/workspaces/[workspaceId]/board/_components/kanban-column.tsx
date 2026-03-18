@@ -82,13 +82,13 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   return (
     <div className="flex flex-col min-w-0 rounded-2xl bg-surface border border-line/40 overflow-hidden">
-      <div className="flex items-start justify-between gap-2 border-b border-line p-4">
+      <div className="flex items-center justify-between gap-2 border-b border-line p-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2">
             <TaskStatusDot status={status} className="size-2.5" />
-            <h4 className="m-0 text-[14px] font-semibold text-text truncate flex items-center gap-1.5">
-              {label}
-              <span className="text-[12px] font-normal text-text-dim tabular-nums">
+            <h4 className="m-0 text-[14px] font-semibold text-text flex items-baseline gap-1.5 min-w-0">
+              <span className="truncate">{label}</span>
+              <span className="shrink-0 text-[12px] font-normal text-text-dim tabular-nums">
                 {tasks.length}
               </span>
             </h4>
