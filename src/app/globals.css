@@ -25,6 +25,12 @@
   --theme-task-done: #a78bfa;
   --theme-task-cancelled: #6b7280;
   --theme-task-backlog: #9ca3af;
+
+  /* 상태 뱃지 텍스트 색상 (어두운 배경 위 밝은 색조) */
+  --theme-yellow-soft: #f5dfac;
+  --theme-blue-soft: #b7e5ff;
+  --theme-green-soft: #b1f1d2;
+  --theme-orange-soft: #ffd4b8;
 }
 
 /* 밝은 테마 (data-theme="light"일 때) */
@@ -52,34 +58,70 @@
   --theme-task-done: #8b5cf6;
   --theme-task-cancelled: #6b7280;
   --theme-task-backlog: #9ca3af;
+
+  /* 상태 뱃지 텍스트 색상 (밝은 배경 위 어두운 색조) */
+  --theme-yellow-soft: #78540d;
+  --theme-blue-soft: #1e4e79;
+  --theme-green-soft: #14532d;
+  --theme-orange-soft: #7c2d12;
 }
 
 @theme inline {
+  /* 배경 & 서피스 */
   --color-bg: var(--theme-bg);
   --color-surface: var(--theme-surface);
   --color-surface-2: var(--theme-surface-2);
   --color-surface-3: var(--theme-surface-3);
+
+  /* 선 & 경계 */
   --color-line: var(--theme-line);
   --color-line-2: var(--theme-line-2);
+
+  /* 텍스트 */
   --color-text: var(--theme-text);
   --color-text-soft: var(--theme-text-soft);
   --color-text-dim: var(--theme-text-dim);
+
+  /* 강조색 */
   --color-accent: var(--theme-accent);
   --color-accent-soft: var(--theme-accent-soft);
   --color-accent-dim: var(--theme-accent-dim);
+
+  /* 시맨틱 색상 */
   --color-green: var(--theme-green);
   --color-orange: var(--theme-orange);
   --color-red: var(--theme-red);
   --color-blue: var(--theme-blue);
   --color-yellow: var(--theme-yellow);
   --color-purple: var(--theme-purple);
+
+  /* 상태 뱃지 텍스트 (테마 전환 대응) */
+  --color-yellow-soft: var(--theme-yellow-soft);
+  --color-blue-soft: var(--theme-blue-soft);
+  --color-green-soft: var(--theme-green-soft);
+  --color-orange-soft: var(--theme-orange-soft);
+
+  /* 태스크 상태 색상 */
   --color-task-todo: var(--theme-task-todo);
   --color-task-inprogress: var(--theme-task-inprogress);
   --color-task-done: var(--theme-task-done);
   --color-task-cancelled: var(--theme-task-cancelled);
   --color-task-backlog: var(--theme-task-backlog);
 
+  /* 브레이크포인트 */
   --breakpoint-lg: 960px;
+
+  /* 그림자 */
+  --shadow-overlay: 0 24px 60px rgba(0, 0, 0, 0.45);
+
+  /* 테두리 반경 */
+  --radius-input: 10px;
+  --radius-card: 14px;
+  --radius-card-lg: 20px;
+
+  /* 폰트 크기 */
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-ui: 0.8125rem;  /* 13px */
 }
 
 @layer base {
