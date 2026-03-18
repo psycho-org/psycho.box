@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { ACCESS_TOKEN_COOKIE, BACKEND_API_URL } from '@/lib/constants';
 
-/** GET - 분석 요청 목록 조회. 백엔드 경로: /api/v1/analysis-requests */
+/** GET - 분석 요청 목록 조회. 백엔드 경로: /api/v1/workspace/{workspaceId}/analysis-requests */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ workspaceId: string }> },
@@ -19,8 +19,7 @@ export async function GET(
     return Response.json({ message: 'sprintId is required' }, { status: 400 });
   }
 
-  const url = new URL(`${BACKEND_API_URL}/api/v1/analysis-requests`);
-  url.searchParams.set('workspaceId', workspaceId);
+  const url = new URL(`${BACKEND_API_URL}/api/v1/workspace/${workspaceId}/analysis-requests`);
   url.searchParams.set('sprintId', sprintId);
 
   const res = await fetch(url, {

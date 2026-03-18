@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { ACCESS_TOKEN_COOKIE, BACKEND_API_URL } from '@/lib/constants';
 
-/** POST - 분석 요청 생성. 백엔드 경로: /api/v1/analysis-requests */
+/** POST - 분석 요청 생성. 백엔드 경로: /api/v1/workspace/{workspaceId}/analysis-requests */
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ workspaceId: string }> },
@@ -16,14 +16,13 @@ export async function POST(
   const body = await request.json().catch(() => ({}));
   const sprintId = body?.sprintId;
 
-  const res = await fetch(`${BACKEND_API_URL}/api/v1/analysis-requests`, {
+  const res = await fetch(`${BACKEND_API_URL}/api/v1/workspace/${workspaceId}/analysis-requests`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      workspaceId,
       sprintId,
     }),
     cache: 'no-store',

@@ -40,24 +40,24 @@ psycho.box 프론트엔드 개발에 필요하지만, 현재 psycho.pizza에 구
 
 | 항목 | 내용 |
 |------|------|
-| **API** | `GET /api/v1/workspaces/{workspaceId}/analysis-requests` |
+| **API** | `GET /api/v1/workspace/{workspaceId}/analysis-requests?sprintId={sprintId}` |
 | **용도** | AI 분석 대시 — 분석 요청 목록 |
-| **현재** | `POST /api/v1/{workspaceId}/analysis/request` (생성)만 존재 |
-| **상태** | **개발 예정** |
+| **현재** | 구현 완료 |
+| **상태** | 사용 가능 |
 
 | 항목 | 내용 |
 |------|------|
-| **API** | `GET /api/v1/workspaces/{workspaceId}/analysis-requests/{requestId}` |
-| **용도** | 분석 요청 상세 조회 |
-| **현재** | 없음 |
-| **상태** | **개발 예정** |
+| **API** | `POST /api/v1/workspace/{workspaceId}/analysis-requests` |
+| **용도** | 스프린트 분석 요청 생성 |
+| **현재** | 구현 완료 |
+| **상태** | 사용 가능 |
 
 | 항목 | 내용 |
 |------|------|
-| **API** | `GET /api/v1/workspaces/{workspaceId}/analysis-reports/{reportId}` (또는 동등 경로) |
+| **API** | `GET /api/v1/workspace/{workspaceId}/analysis-requests/{analysisRequestId}/report` |
 | **용도** | AI 분석 리포트(요약·점수) 조회 |
-| **현재** | 없음 |
-| **상태** | **개발 예정** |
+| **현재** | 구현 완료 |
+| **상태** | 사용 가능 |
 
 ---
 
@@ -138,7 +138,6 @@ psycho.box 프론트엔드 개발에 필요하지만, 현재 psycho.pizza에 구
 |----------|-----|--------------|
 | **P0** | 멤버 목록, 프로젝트 목록, 스프린트 목록 | 멤버 관리, 사이드바, 스프린트 보드 구현 불가 |
 | **P1** | 워크스페이스 통계, 태스크 필터, Task projectId/sprintId | 여러 API 호출로 우회 필요, 성능/복잡도 증가 |
-| **P1** | Analysis 조회 (analysis-requests, analysis-reports) | AI 분석 대시·상세 구현 불가 |
 | **P2** | 초대 대기, 태그, IN_REVIEW, 활동 상태 | UI 단순화 또는 생략으로 대체 가능 |
 
 ---
@@ -149,6 +148,6 @@ psycho.box 프론트엔드 개발에 필요하지만, 현재 psycho.pizza에 구
 |-----|------|
 | `GET /workspaces/{id}/projects` | 개발 예정 |
 | `GET /workspaces/{id}/sprints` | 개발 예정 |
-| `GET /workspaces/{id}/analysis-requests` | 개발 예정 |
-| `GET /workspaces/{id}/analysis-requests/{requestId}` | 개발 예정 |
-| `GET /workspaces/{id}/analysis-reports/{reportId}` | 개발 예정 |
+| `POST /workspace/{id}/analysis-requests` | 사용 가능 |
+| `GET /workspace/{id}/analysis-requests?sprintId=...` | 사용 가능 |
+| `GET /workspace/{id}/analysis-requests/{analysisRequestId}/report` | 사용 가능 |

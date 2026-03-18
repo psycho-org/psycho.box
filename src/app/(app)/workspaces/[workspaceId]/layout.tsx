@@ -9,7 +9,7 @@ import { WorkspaceProvider } from '@/components/workspace-provider';
 const VIEW_TITLES: Record<string, string> = {
   sprint: '태스크',
   assignee: '담당자',
-  my: '나의 테스크',
+  my: '나의 태스크',
   roadmap: '로드맵',
 };
 

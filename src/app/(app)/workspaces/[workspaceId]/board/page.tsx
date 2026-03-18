@@ -385,7 +385,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
   const viewTitles: Record<BoardView, string> = {
     sprint: '스프린트',
     assignee: '담당자',
-    my: '나의 테스크',
+    my: '나의 태스크',
     roadmap: '로드맵',
   };
 
@@ -444,7 +444,7 @@ export default function BoardPage({ params }: { params: Promise<{ workspaceId: s
       });
     }
 
-    // 스프린트, 나의 테스크: 상태별 그룹
+    // 스프린트, 나의 태스크: 상태별 그룹
     return COLUMNS.map(({ label, status }) => ({
       key: status,
       label,

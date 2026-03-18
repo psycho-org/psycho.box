@@ -196,7 +196,7 @@ export function AppShell({ title: titleProp, children }: AppShellProps) {
 
   const boardNavItems = [
     { view: 'assignee', label: '담당자', icon: PersonIcon },
-    { view: 'my', label: '나의 테스크', icon: UserCheckIcon },
+    { view: 'my', label: '나의 태스크', icon: UserCheckIcon },
     { view: 'roadmap', label: '로드맵', icon: RoadmapIcon },
   ] as const;
 
@@ -245,7 +245,7 @@ export function AppShell({ title: titleProp, children }: AppShellProps) {
             스프린트 보드
           </Link>
 
-          {/* 스프린트, 담당자, 나의 테스크, 로드맵 */}
+          {/* 스프린트, 담당자, 나의 태스크, 로드맵 */}
           {boardNavItems.map(({ view, label, icon: Icon }) => (
             <Link
               key={view}
