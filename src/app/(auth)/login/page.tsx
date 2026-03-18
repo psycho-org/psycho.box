@@ -41,7 +41,7 @@ export default function LoginPage() {
         <label className="grid gap-1.5 text-[13px] text-text-soft">
           이메일
           <input
-            className="w-full border border-line rounded-[10px] bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
+            className="w-full border border-line rounded-input bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -52,7 +52,7 @@ export default function LoginPage() {
         <label className="grid gap-1.5 text-[13px] text-text-soft">
           비밀번호
           <input
-            className="w-full border border-line rounded-[10px] bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
+            className="w-full border border-line rounded-input bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

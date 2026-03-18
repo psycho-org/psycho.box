@@ -215,7 +215,7 @@ export default function RegisterPage() {
             <label className="grid gap-1.5 text-[13px] text-text-soft">
             이메일
             <input
-              className="w-full border border-line rounded-[10px] bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
+              className="w-full border border-line rounded-input bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -280,7 +280,7 @@ export default function RegisterPage() {
           <label className="grid gap-1.5 text-[13px] text-text-soft">
             이메일
             <input
-              className="w-full border border-line/60 rounded-[10px] bg-surface-3 text-text-soft py-2.5 px-3 font-[inherit] cursor-default"
+              className="w-full border border-line/60 rounded-input bg-surface-3 text-text-soft py-2.5 px-3 font-[inherit] cursor-default"
               type="text"
               value={email}
               readOnly
@@ -301,7 +301,7 @@ export default function RegisterPage() {
           <label className="grid gap-1.5 text-[13px] text-text-soft">
             이름
             <input
-              className="w-full border border-line rounded-[10px] bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
+              className="w-full border border-line rounded-input bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
               type="text"
               value={givenName}
               onChange={(e) => setGivenName(e.target.value)}
@@ -312,7 +312,7 @@ export default function RegisterPage() {
           <label className="grid gap-1.5 text-[13px] text-text-soft">
             성
             <input
-              className="w-full border border-line rounded-[10px] bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
+              className="w-full border border-line rounded-input bg-surface-2 text-text py-2.5 px-3 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
               type="text"
               value={familyName}
               onChange={(e) => setFamilyName(e.target.value)}

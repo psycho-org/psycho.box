@@ -321,7 +321,7 @@ export function DatePicker({
             setOpen((o) => !o);
           }
         }}
-        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-surface-2 border border-line rounded-xl text-[14px] text-left hover:border-line-2 hover:bg-surface-3/50 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 transition-all cursor-pointer ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] text-left hover:border-line-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all cursor-pointer ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
       >
         <span className={display ? 'text-text' : 'text-text-dim'}>
           {display || placeholder}

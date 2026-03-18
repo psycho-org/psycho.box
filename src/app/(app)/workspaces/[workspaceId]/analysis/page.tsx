@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useState } from 'react';
 import { usePageTitle } from '@/components/page-title-context';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
@@ -94,13 +95,6 @@ function buildPendingReport(sprint: Sprint | undefined, request: AnalysisRequest
   };
 }
 
-function SelectChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
 
 export default function AnalysisPage({
   params,
@@ -225,26 +219,18 @@ export default function AnalysisPage({
             <label htmlFor="sprintId" className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.12em] text-text-dim">
               스프린트
             </label>
-            <div className="relative">
-              <select
-                id="sprintId"
-                value={sprintId}
-                onChange={(e) => setSprintId(e.target.value)}
-                className="w-full appearance-none rounded-2xl border border-line/50 bg-surface-2/50 px-4 py-3 pr-12 text-[20px] font-semibold text-text focus:border-transparent focus:outline-none focus:ring-2 focus:ring-accent"
-                disabled={loading || sprintsLoading || sprints.length === 0}
-              >
-                {sprints.length === 0 ? (
-                  <option value="">{sprintsLoading ? '스프린트 불러오는 중...' : '선택 가능한 스프린트가 없습니다.'}</option>
-                ) : (
-                  sprints.map((sprint) => (
-                    <option key={sprint.sprintId} value={sprint.sprintId}>
-                      {sprint.name}
-                    </option>
-                  ))
-                )}
-              </select>
-              <SelectChevronIcon className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-text-dim" />
-            </div>
+            <Select
+              id="sprintId"
+              value={sprintId}
+              onChange={setSprintId}
+              size="lg"
+              disabled={loading || sprintsLoading || sprints.length === 0}
+              options={
+                sprints.length === 0
+                  ? [{ value: '', label: sprintsLoading ? '스프린트 불러오는 중...' : '선택 가능한 스프린트가 없습니다.' }]
+                  : sprints.map((sprint) => ({ value: sprint.sprintId, label: sprint.name }))
+              }
+            />
             <p className="mb-0 mt-2 text-[12px] text-text-dim">
               {selectedSprint
                 ? `${formatCompactDate(selectedSprint.startDate)} ~ ${formatCompactDate(selectedSprint.endDate)}`

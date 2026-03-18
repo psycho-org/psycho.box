@@ -76,7 +76,7 @@ export function PasswordInput({
       <span className="relative flex">
         <input
           id={inputId}
-          className="w-full border border-line rounded-[10px] bg-surface-2 text-text py-2.5 px-3 pr-20 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
+          className="w-full border border-line rounded-input bg-surface-2 text-text py-2.5 px-3 pr-20 font-[inherit] focus:outline-2 focus:outline-accent focus:outline-offset-1"
           type={showPassword ? 'text' : 'password'}
           value={value}
           onChange={(e) => onChange(e.target.value)}
