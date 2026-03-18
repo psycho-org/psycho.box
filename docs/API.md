@@ -642,19 +642,18 @@ OTP 재요청 쿨다운 시(HTTP 429), `meta`에 아래 정보 포함:
 
 ## 9. Analysis (AI 분석)
 
-주의: 경로가 `/api/v1/workspaces/{workspaceId}/...`가 아니라 `/api/v1/{workspaceId}/analysis/...` 입니다.
-
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| POST | `/api/v1/{workspaceId}/analysis/request` | JWT | 스프린트 분석 요청 생성 |
+| POST | `/api/v1/analysis-requests` | JWT | 스프린트 분석 요청 생성 |
+| GET | `/api/v1/analysis-requests` | JWT | 특정 워크스페이스/스프린트의 분석 요청 목록 조회 |
+| GET | `/api/v1/analysis-requests/{analysisRequestId}/report` | JWT | 분석 요청 리포트 조회 |
 
-### POST /api/v1/{workspaceId}/analysis/request
+### POST /api/v1/analysis-requests
 
 ```json
 {
-  "target": {
-    "sprintId": "UUID (required)"
-  }
+  "workspaceId": "UUID (required)",
+  "sprintId": "UUID (required)"
 }
 ```
 
@@ -663,8 +662,50 @@ OTP 재요청 쿨다운 시(HTTP 429), `meta`에 아래 정보 포함:
 ```json
 {
   "analysisRequestId": "UUID",
-  "status": "string",
+  "status": "QUEUED | RUNNING | DONE | FAILED",
   "createdAt": "ISO-8601"
+}
+```
+
+### GET /api/v1/analysis-requests
+
+**Query Parameters**
+
+- `workspaceId` (UUID, required)
+- `sprintId` (UUID, required)
+
+**Response (data)**
+
+```json
+{
+  "items": [
+    {
+      "analysisRequestId": "UUID",
+      "status": "QUEUED | RUNNING | DONE | FAILED",
+      "hasReport": true,
+      "requestedAt": "ISO-8601"
+    }
+  ]
+}
+```
+
+### GET /api/v1/analysis-requests/{analysisRequestId}/report
+
+**Path Parameters**
+
+- `analysisRequestId` (UUID, required)
+
+**Response (data)**
+
+```json
+{
+  "workspaceId": "UUID",
+  "sprintId": "UUID",
+  "analysisRequestId": "UUID",
+  "status": "QUEUED | RUNNING | DONE | FAILED",
+  "totalScore": 0,
+  "result": "string | null",
+  "createdAt": "ISO-8601 | null"
 }
 ```
 

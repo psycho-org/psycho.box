@@ -7,10 +7,33 @@ import { Select } from '@/components/ui/select';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 
-interface AnalysisRequest {
+const MAX_DAILY_REQUESTS = 3;
+
+interface AnalysisCreateResponse {
   analysisRequestId: string;
   status?: string;
   createdAt?: string;
+}
+
+interface AnalysisRequestListItem {
+  analysisRequestId: string;
+  status: string;
+  hasReport: boolean;
+  requestedAt: string;
+}
+
+interface AnalysisRequestListResponse {
+  items: AnalysisRequestListItem[];
+}
+
+interface AnalysisReportResponse {
+  workspaceId: string;
+  sprintId: string;
+  analysisRequestId: string;
+  status: string;
+  totalScore: number;
+  result: string | null;
+  createdAt: string | null;
 }
 
 interface Sprint {
@@ -20,14 +43,19 @@ interface Sprint {
   endDate: string;
 }
 
-interface AnalysisReport {
+interface AnalysisReportCard {
   id: string;
+  analysisRequestId: string;
   sprintId: string;
   title: string;
   status: string;
-  createdAt: string;
+  requestedAt: string;
+  createdAt: string | null;
   summary: string;
   content: string | null;
+  totalScore: number;
+  hasReport: boolean;
+  reportLoaded: boolean;
 }
 
 function formatCompactDate(value?: string | null) {
@@ -73,28 +101,71 @@ function getStatusCountLabel(status: string) {
   return '대기';
 }
 
-function buildPendingReport(sprint: Sprint | undefined, request: AnalysisRequest): AnalysisReport {
-  const createdAt = request.createdAt ?? new Date().toISOString();
-  const status = request.status ?? 'QUEUED';
+function getReportTitle(sprint: Sprint | undefined) {
+  return sprint ? `${sprint.name} 분석 리포트` : '분석 리포트';
+}
+
+function getReportSummary(status?: string, result?: string | null) {
+  if (status === 'FAILED') {
+    return '리포트 생성에 실패했습니다. 다시 요청해 주세요.';
+  }
+  if (status === 'DONE') {
+    return result?.trim() || '리포트가 생성되었지만 본문이 비어 있습니다.';
+  }
+  if (status === 'RUNNING') {
+    return '분석이 진행 중입니다. 잠시 후 새로고침해 주세요.';
+  }
+  return '분석 요청이 접수되었습니다. 잠시 후 새로고침해 주세요.';
+}
+
+function getListSummary(report: AnalysisReportCard) {
+  if (report.status === 'FAILED') {
+    return '리포트 생성 실패';
+  }
+  if (report.status === 'DONE') {
+    return report.reportLoaded
+      ? '리포트 생성 완료. 우측 상세 영역에서 내용을 확인하세요.'
+      : '리포트 생성 완료. 내용을 불러오는 중입니다.';
+  }
+  if (report.status === 'RUNNING') {
+    return '리포트 생성 진행 중';
+  }
+  return '리포트 생성 대기 중';
+}
+
+function formatRequestId(value: string) {
+  return value.length > 8 ? value.slice(0, 8) : value;
+}
+
+function buildPendingCard(sprint: Sprint | undefined, request: AnalysisRequestListItem): AnalysisReportCard {
   return {
-    id: request.analysisRequestId ?? `${sprint?.sprintId ?? 'report'}-${createdAt}`,
+    id: request.analysisRequestId,
+    analysisRequestId: request.analysisRequestId,
     sprintId: sprint?.sprintId ?? '',
-    title: sprint ? `${sprint.name} 분석 리포트` : '분석 리포트',
-    status,
-    createdAt,
-    summary:
-      status === 'FAILED'
-        ? '리포트 생성에 실패했습니다. 다시 요청해 주세요.'
-        : status === 'DONE'
-          ? '분석이 완료되었습니다. 결과 조회 API 연결 시 본문이 표시됩니다.'
-          : '분석 요청이 접수되었습니다. 완료되면 본문이 여기에 표시됩니다.',
-    content:
-      status === 'DONE'
-        ? '분석 결과 조회 API가 연결되면 이 영역에 리포트 본문 텍스트가 표시됩니다.'
-        : null,
+    title: getReportTitle(sprint),
+    status: request.status,
+    requestedAt: request.requestedAt,
+    createdAt: null,
+    summary: getReportSummary(request.status),
+    content: null,
+    totalScore: 0,
+    hasReport: request.hasReport,
+    reportLoaded: false,
   };
 }
 
+function applyReportToCard(card: AnalysisReportCard, detail: AnalysisReportResponse): AnalysisReportCard {
+  return {
+    ...card,
+    status: detail.status,
+    createdAt: detail.createdAt,
+    summary: getReportSummary(detail.status, detail.result),
+    content: detail.result ?? null,
+    totalScore: detail.totalScore,
+    hasReport: true,
+    reportLoaded: true,
+  };
+}
 
 export default function AnalysisPage({
   params,
@@ -106,10 +177,13 @@ export default function AnalysisPage({
   const [sprintId, setSprintId] = useState('');
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [sprintsLoading, setSprintsLoading] = useState(true);
-  const [reportsBySprint, setReportsBySprint] = useState<Record<string, AnalysisReport[]>>({});
+  const [reportsBySprint, setReportsBySprint] = useState<Record<string, AnalysisReportCard[]>>({});
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
@@ -127,7 +201,10 @@ export default function AnalysisPage({
           return;
         }
 
-        const sprintList = Array.isArray(result.data) ? result.data : (result.data as any)?.content || [];
+        const sprintList = Array.isArray(result.data)
+          ? result.data
+          : ((result.data as { content?: Sprint[] } | undefined)?.content ?? []);
+
         setSprints(sprintList);
         setSprintId((prev) => prev || sprintList[0]?.sprintId || '');
       })
@@ -143,18 +220,6 @@ export default function AnalysisPage({
   );
 
   const reports = useMemo(() => reportsBySprint[sprintId] ?? [], [reportsBySprint, sprintId]);
-
-  useEffect(() => {
-    if (reports.length === 0) {
-      setSelectedReportId(null);
-      return;
-    }
-
-    const hasSelectedReport = reports.some((report) => report.id === selectedReportId);
-    if (!hasSelectedReport) {
-      setSelectedReportId(reports[0].id);
-    }
-  }, [reports, selectedReportId]);
 
   const selectedReport = useMemo(
     () => reports.find((report) => report.id === selectedReportId) ?? null,
@@ -174,6 +239,134 @@ export default function AnalysisPage({
       .filter((item) => item.count > 0);
   }, [reports]);
 
+  const todayRequestCount = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startTime = startOfToday.getTime();
+
+    return reports.filter((report) => {
+      const requestedTime = new Date(report.requestedAt).getTime();
+      return Number.isFinite(requestedTime) && requestedTime >= startTime;
+    }).length;
+  }, [reports]);
+
+  useEffect(() => {
+    if (reports.length === 0) {
+      setSelectedReportId(null);
+      return;
+    }
+
+    const hasSelectedReport = reports.some((report) => report.id === selectedReportId);
+    if (!hasSelectedReport) {
+      setSelectedReportId(reports[0].id);
+    }
+  }, [reports, selectedReportId]);
+
+  useEffect(() => {
+    if (!workspaceId || !sprintId) return;
+
+    let cancelled = false;
+    setRequestsLoading(true);
+
+    apiRequest<AnalysisRequestListResponse>(
+      `/api/real/workspaces/${workspaceId}/analysis/requests?sprintId=${encodeURIComponent(sprintId)}`,
+    )
+      .then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          setError(getErrorMessage({ code: result.code, message: result.message, status: result.status }));
+          return;
+        }
+
+        const items = result.data?.items ?? [];
+        const sprint = sprints.find((item) => item.sprintId === sprintId);
+
+        setReportsBySprint((prev) => {
+          const previousCards = prev[sprintId] ?? [];
+          const previousById = new Map(previousCards.map((card) => [card.analysisRequestId, card]));
+          const nextCards = items.map((item) => {
+            const existing = previousById.get(item.analysisRequestId);
+            const base = buildPendingCard(sprint, item);
+            if (!existing) return base;
+            return {
+              ...base,
+              createdAt: existing.createdAt,
+              summary: existing.reportLoaded ? existing.summary : base.summary,
+              content: existing.reportLoaded ? existing.content : base.content,
+              totalScore: existing.reportLoaded ? existing.totalScore : base.totalScore,
+              reportLoaded: existing.reportLoaded,
+            };
+          });
+
+          return {
+            ...prev,
+            [sprintId]: nextCards,
+          };
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError('분석 요청 목록을 불러오는 중 오류가 발생했습니다.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRequestsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId, sprintId, sprints]);
+
+  useEffect(() => {
+    if (!workspaceId || !selectedSprint || !selectedReport) return;
+    if (!selectedReport.hasReport || selectedReport.reportLoaded) return;
+
+    let cancelled = false;
+    setDetailLoadingId(selectedReport.analysisRequestId);
+    setDetailError(null);
+
+    apiRequest<AnalysisReportResponse>(
+      `/api/real/workspaces/${workspaceId}/analysis/requests/${selectedReport.analysisRequestId}/report`,
+    )
+      .then((result) => {
+        if (cancelled) return;
+        if (!result.ok || !result.data) {
+          setDetailError(getErrorMessage({ code: result.code, message: result.message, status: result.status }));
+          return;
+        }
+
+        const detail = result.data;
+        setReportsBySprint((prev) => {
+          const currentCards = prev[selectedSprint.sprintId] ?? [];
+          return {
+            ...prev,
+            [selectedSprint.sprintId]: currentCards.map((card) =>
+              card.analysisRequestId === selectedReport.analysisRequestId
+                ? applyReportToCard(card, detail)
+                : card,
+            ),
+          };
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDetailError('리포트 상세를 불러오는 중 오류가 발생했습니다.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDetailLoadingId(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedReport, selectedSprint, workspaceId]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -183,9 +376,13 @@ export default function AnalysisPage({
       setError('스프린트를 선택해 주세요.');
       return;
     }
+    if (todayRequestCount >= MAX_DAILY_REQUESTS) {
+      setError('하루에 이 스프린트에 대해 최대 3회까지만 분석 요청할 수 있습니다.');
+      return;
+    }
 
     setLoading(true);
-    const result = await apiRequest<AnalysisRequest>(
+    const result = await apiRequest<AnalysisCreateResponse>(
       `/api/real/workspaces/${workspaceId}/analysis/request`,
       {
         method: 'POST',
@@ -194,29 +391,47 @@ export default function AnalysisPage({
     );
     setLoading(false);
 
-    if (result.ok && result.data) {
-      const request = result.data as unknown as AnalysisRequest;
-      const nextReport = buildPendingReport(
-        sprints.find((sprint) => sprint.sprintId === trimmed),
-        request,
-      );
-      setReportsBySprint((prev) => ({
-        ...prev,
-        [trimmed]: [nextReport, ...(prev[trimmed] ?? [])],
-      }));
-      setSelectedReportId(nextReport.id);
-      setSuccess(`분석 요청이 생성되었습니다. (ID: ${request.analysisRequestId ?? '—'})`);
-    } else {
+    if (!result.ok || !result.data) {
       setError(getErrorMessage({ code: result.code, message: result.message, status: result.status }));
+      return;
     }
+
+    const request: AnalysisRequestListItem = {
+      analysisRequestId: result.data.analysisRequestId,
+      status: result.data.status ?? 'QUEUED',
+      hasReport: false,
+      requestedAt: result.data.createdAt ?? new Date().toISOString(),
+    };
+
+    const nextCard = buildPendingCard(
+      sprints.find((sprint) => sprint.sprintId === trimmed),
+      request,
+    );
+
+    setReportsBySprint((prev) => ({
+      ...prev,
+      [trimmed]: [nextCard, ...(prev[trimmed] ?? []).filter((card) => card.analysisRequestId !== nextCard.analysisRequestId)],
+    }));
+    setSelectedReportId(nextCard.id);
+    setSuccess(`분석 요청이 접수되었습니다. (ID: ${request.analysisRequestId})`);
+
   }
+
+  const requestButtonLabel = '분석 요청';
+
+  const sprintSelectDisabled = sprintsLoading || sprints.length === 0;
+  const requestButtonDisabled =
+    loading || sprintsLoading || !sprintId || todayRequestCount >= MAX_DAILY_REQUESTS;
 
   return (
     <div className="space-y-4">
       <section className="rounded-2xl border border-line/40 bg-surface/90 p-4 shadow-sm">
         <form onSubmit={handleSubmit} className="flex flex-wrap items-end justify-between gap-3">
           <div className="w-full max-w-[540px]">
-            <label htmlFor="sprintId" className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.12em] text-text-dim">
+            <label
+              htmlFor="sprintId"
+              className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.12em] text-text-dim"
+            >
               스프린트
             </label>
             <Select
@@ -224,7 +439,7 @@ export default function AnalysisPage({
               value={sprintId}
               onChange={setSprintId}
               size="lg"
-              disabled={loading || sprintsLoading || sprints.length === 0}
+              disabled={sprintSelectDisabled}
               options={
                 sprints.length === 0
                   ? [{ value: '', label: sprintsLoading ? '스프린트 불러오는 중...' : '선택 가능한 스프린트가 없습니다.' }]
@@ -238,9 +453,14 @@ export default function AnalysisPage({
                   ? '스프린트 목록을 불러오는 중입니다.'
                   : '선택 가능한 스프린트가 없습니다.'}
             </p>
+            {todayRequestCount >= MAX_DAILY_REQUESTS ? (
+              <p className="mb-0 mt-2 text-[12px] text-text-dim">
+                하루에 이 스프린트에 대해 최대 3회까지만 분석 요청할 수 있습니다.
+              </p>
+            ) : null}
           </div>
-          <Button type="submit" loading={loading} disabled={loading || sprintsLoading || !sprintId}>
-            분석 요청
+          <Button type="submit" loading={loading} disabled={requestButtonDisabled}>
+            {requestButtonLabel}
           </Button>
         </form>
         {error ? <p className="mt-4 text-[13px] text-red">{error}</p> : null}
@@ -262,7 +482,9 @@ export default function AnalysisPage({
             <div className="border-b border-line/50 px-4 py-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="m-0 text-[14px] font-semibold text-text">리포트 목록</h3>
-                <span className="text-[12px] text-text-dim">{reports.length}개</span>
+                <span className="text-[12px] text-text-dim">
+                  {requestsLoading ? '불러오는 중' : `${reports.length}개`}
+                </span>
               </div>
               {reportStatusSummary.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -282,6 +504,10 @@ export default function AnalysisPage({
               {!selectedSprint ? (
                 <div className="rounded-xl border border-dashed border-line/60 bg-surface px-4 py-8 text-center text-[13px] text-text-dim">
                   스프린트를 선택하면 리포트 목록이 표시됩니다.
+                </div>
+              ) : requestsLoading ? (
+                <div className="rounded-xl border border-dashed border-line/60 bg-surface px-4 py-8 text-center text-[13px] text-text-dim">
+                  리포트 목록을 불러오는 중입니다.
                 </div>
               ) : reports.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-line/60 bg-surface px-4 py-8 text-center text-[13px] text-text-dim">
@@ -304,7 +530,12 @@ export default function AnalysisPage({
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="truncate text-[14px] font-medium text-text">{report.title}</div>
-                          <div className="mt-1 text-[12px] text-text-dim">{formatDateTime(report.createdAt)}</div>
+                          <div className="mt-1 flex items-center gap-2 text-[11px] text-text-dim">
+                            <span className="rounded-full border border-line/60 px-2 py-0.5 font-mono text-[10px]">
+                              ID {formatRequestId(report.analysisRequestId)}
+                            </span>
+                            <span>{formatDateTime(report.createdAt ?? report.requestedAt)}</span>
+                          </div>
                         </div>
                         <span
                           className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-medium ${getStatusTone(report.status)}`}
@@ -312,7 +543,9 @@ export default function AnalysisPage({
                           {getStatusLabel(report.status)}
                         </span>
                       </div>
-                      <p className="mt-3 mb-0 line-clamp-2 text-[12px] leading-5 text-text-dim">{report.summary}</p>
+                      <p className="mt-3 mb-0 text-[12px] leading-5 text-text-dim">
+                        {getListSummary(report)}
+                      </p>
                     </button>
                   );
                 })
@@ -324,10 +557,16 @@ export default function AnalysisPage({
             <div className="border-b border-line/50 px-4 py-3 lg:hidden">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="m-0 text-[14px] font-semibold text-text">리포트</h3>
-                <span className="text-[12px] text-text-dim">{reports.length}개</span>
+                <span className="text-[12px] text-text-dim">
+                  {requestsLoading ? '불러오는 중' : `${reports.length}개`}
+                </span>
               </div>
               <div className="mt-3 flex gap-2 overflow-x-auto">
-                {reports.length === 0 ? (
+                {requestsLoading ? (
+                  <div className="rounded-xl border border-dashed border-line/60 bg-surface-2/30 px-4 py-3 text-[12px] text-text-dim">
+                    리포트 목록을 불러오는 중입니다.
+                  </div>
+                ) : reports.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-line/60 bg-surface-2/30 px-4 py-3 text-[12px] text-text-dim">
                     리포트가 없습니다.
                   </div>
@@ -339,7 +578,7 @@ export default function AnalysisPage({
                         key={report.id}
                         type="button"
                         onClick={() => setSelectedReportId(report.id)}
-                        className={`flex w-[180px] shrink-0 flex-col items-start gap-2 rounded-2xl border px-3 py-3 text-left transition-colors ${
+                        className={`flex w-[220px] shrink-0 flex-col items-start gap-2 rounded-2xl border px-3 py-3 text-left transition-colors ${
                           isSelected
                             ? 'border-accent/30 bg-accent-dim/30 shadow-sm'
                             : 'border-line/50 bg-surface-2/30'
@@ -351,9 +590,12 @@ export default function AnalysisPage({
                           >
                             {getStatusLabel(report.status)}
                           </span>
-                          <span className="text-[10px] text-text-dim">{formatCompactDate(report.createdAt)}</span>
+                          <span className="text-[10px] text-text-dim">{formatCompactDate(report.createdAt ?? report.requestedAt)}</span>
                         </div>
                         <div className="w-full truncate text-[12px] font-medium text-text">{report.title}</div>
+                        <div className="rounded-full border border-line/60 px-2 py-0.5 font-mono text-[10px] text-text-dim">
+                          ID {formatRequestId(report.analysisRequestId)}
+                        </div>
                       </button>
                     );
                   })
@@ -370,14 +612,16 @@ export default function AnalysisPage({
               </div>
             ) : (
               <div className="flex h-full min-h-[420px] flex-col">
-                    <div className="border-b border-line/50 px-6 py-5">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="min-w-0">
-                          <p className="m-0 text-[12px] uppercase tracking-[0.12em] text-text-dim">리포트</p>
-                          <h3 className="mt-2 mb-0 text-[22px] font-semibold text-text">{selectedReport.title}</h3>
-                          <p className="mt-2 mb-0 text-[13px] text-text-dim">
-                            {selectedSprint.name} · {formatCompactDate(selectedSprint.startDate)} ~{' '}
-                        {formatCompactDate(selectedSprint.endDate)}
+                <div className="border-b border-line/50 px-6 py-5">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <p className="m-0 text-[12px] uppercase tracking-[0.12em] text-text-dim">리포트</p>
+                      <h3 className="mt-2 mb-0 text-[22px] font-semibold text-text">{selectedReport.title}</h3>
+                      <p className="mt-2 mb-0 text-[13px] text-text-dim">
+                        {selectedSprint.name} · {formatCompactDate(selectedSprint.startDate)} ~ {formatCompactDate(selectedSprint.endDate)}
+                      </p>
+                      <p className="mt-2 mb-0 font-mono text-[11px] text-text-dim">
+                        Request ID {selectedReport.analysisRequestId}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -386,13 +630,27 @@ export default function AnalysisPage({
                       >
                         {getStatusLabel(selectedReport.status)}
                       </span>
-                      <span className="text-[12px] text-text-dim">{formatDateTime(selectedReport.createdAt)}</span>
+                      <span className="text-[12px] text-text-dim">
+                        {formatDateTime(selectedReport.createdAt ?? selectedReport.requestedAt)}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-6 py-5">
-                  {selectedReport.status === 'FAILED' ? (
+                  {detailError ? (
+                    <div className="mb-4 max-w-3xl rounded-2xl border border-red/30 bg-red/10 px-5 py-4 text-[13px] text-red">
+                      {detailError}
+                    </div>
+                  ) : null}
+                  {detailLoadingId === selectedReport.analysisRequestId ? (
+                    <div className="max-w-3xl rounded-2xl border border-line/50 bg-surface-2/50 px-5 py-5">
+                      <p className="m-0 text-[15px] font-medium text-text">리포트 본문을 불러오는 중입니다.</p>
+                      <p className="mt-2 mb-0 text-[13px] leading-6 text-text-dim">
+                        요청 카드에 연결된 리포트 내용을 동기화하고 있습니다.
+                      </p>
+                    </div>
+                  ) : selectedReport.status === 'FAILED' ? (
                     <div className="max-w-3xl rounded-2xl border border-red/30 bg-red/10 px-5 py-4 text-[13px] text-red">
                       분석 리포트 생성이 실패했습니다. 같은 스프린트로 다시 요청하거나 백엔드 오류 로그를 확인해 주세요.
                     </div>
@@ -402,18 +660,24 @@ export default function AnalysisPage({
                         {selectedReport.status === 'RUNNING' ? '분석이 진행 중입니다.' : '분석 요청이 접수되었습니다.'}
                       </p>
                       <p className="mt-2 mb-0 text-[13px] leading-6 text-text-dim">
-                        완료되면 이 영역에 본문이 표시됩니다. 현재는 리포트 목록에서 상태 변화를 확인할 수 있습니다.
+                        리포트가 생성되면 새로고침 후 상세 내용을 확인해 주세요.
                       </p>
                       <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-line/60 bg-surface px-3 py-1.5 text-[12px] text-text-dim">
                         <span>요청 시각</span>
-                        <span className="text-text">{formatDateTime(selectedReport.createdAt)}</span>
+                        <span className="text-text">{formatDateTime(selectedReport.requestedAt)}</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-line/50 bg-surface-2/30 px-5 py-5">
-                      <pre className="m-0 max-w-3xl whitespace-pre-wrap break-words font-sans text-[14px] leading-7 text-text">
-                        {selectedReport.content || '분석 본문이 없습니다.'}
-                      </pre>
+                    <div className="space-y-4">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-green/30 bg-green/10 px-3 py-1.5 text-[12px] text-green">
+                        <span>리포트 생성 완료</span>
+                        <span className="text-text">총점 {selectedReport.totalScore}</span>
+                      </div>
+                      <div className="rounded-2xl border border-line/50 bg-surface-2/30 px-5 py-5">
+                        <pre className="m-0 max-w-3xl whitespace-pre-wrap break-words font-sans text-[14px] leading-7 text-text">
+                          {selectedReport.content || '분석 본문이 없습니다.'}
+                        </pre>
+                      </div>
                     </div>
                   )}
                 </div>
