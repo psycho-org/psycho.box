@@ -669,10 +669,6 @@ export default function AnalysisPage({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-green/30 bg-green/10 px-3 py-1.5 text-[12px] text-green">
-                        <span>리포트 생성 완료</span>
-                        <span className="text-text">총점 {selectedReport.totalScore}</span>
-                      </div>
                       <div className="rounded-2xl border border-line/50 bg-surface-2/30 px-5 py-5">
                         <pre className="m-0 max-w-3xl whitespace-pre-wrap break-words font-sans text-[14px] leading-7 text-text">
                           {selectedReport.content || '분석 본문이 없습니다.'}
