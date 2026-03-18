@@ -51,21 +51,22 @@ function formatDateTime(value?: string | null) {
 
 function getStatusLabel(status?: string) {
   if (!status) return '대기';
-  if (status === 'COMPLETED') return '완료';
+  if (status === 'DONE') return '완료';
   if (status === 'FAILED') return '실패';
   if (status === 'RUNNING') return '분석 중';
+  if (status === 'QUEUED') return '대기';
   return '대기';
 }
 
 function getStatusTone(status?: string) {
-  if (status === 'COMPLETED') return 'border-green/30 bg-green/10 text-green';
+  if (status === 'DONE') return 'border-green/30 bg-green/10 text-green';
   if (status === 'FAILED') return 'border-red/30 bg-red/10 text-red';
   if (status === 'RUNNING') return 'border-accent/30 bg-accent-dim/40 text-accent-soft';
   return 'border-line/60 bg-surface-2/60 text-text-dim';
 }
 
 function getStatusCountLabel(status: string) {
-  if (status === 'COMPLETED') return '완료';
+  if (status === 'DONE') return '완료';
   if (status === 'FAILED') return '실패';
   if (status === 'RUNNING') return '진행 중';
   return '대기';
@@ -73,7 +74,7 @@ function getStatusCountLabel(status: string) {
 
 function buildPendingReport(sprint: Sprint | undefined, request: AnalysisRequest): AnalysisReport {
   const createdAt = request.createdAt ?? new Date().toISOString();
-  const status = request.status ?? 'PENDING';
+  const status = request.status ?? 'QUEUED';
   return {
     id: request.analysisRequestId ?? `${sprint?.sprintId ?? 'report'}-${createdAt}`,
     sprintId: sprint?.sprintId ?? '',
@@ -83,11 +84,11 @@ function buildPendingReport(sprint: Sprint | undefined, request: AnalysisRequest
     summary:
       status === 'FAILED'
         ? '리포트 생성에 실패했습니다. 다시 요청해 주세요.'
-        : status === 'COMPLETED'
+        : status === 'DONE'
           ? '분석이 완료되었습니다. 결과 조회 API 연결 시 본문이 표시됩니다.'
           : '분석 요청이 접수되었습니다. 완료되면 본문이 여기에 표시됩니다.',
     content:
-      status === 'COMPLETED'
+      status === 'DONE'
         ? '분석 결과 조회 API가 연결되면 이 영역에 리포트 본문 텍스트가 표시됩니다.'
         : null,
   };
@@ -171,7 +172,7 @@ export default function AnalysisPage({
     for (const report of reports) {
       counts.set(report.status, (counts.get(report.status) ?? 0) + 1);
     }
-    return ['PENDING', 'RUNNING', 'COMPLETED', 'FAILED']
+    return ['QUEUED', 'RUNNING', 'DONE', 'FAILED']
       .map((status) => ({
         status,
         count: counts.get(status) ?? 0,
@@ -194,7 +195,7 @@ export default function AnalysisPage({
       `/api/real/workspaces/${workspaceId}/analysis/request`,
       {
         method: 'POST',
-        body: JSON.stringify({ target: { sprintId: trimmed } }),
+        body: JSON.stringify({ sprintId: trimmed }),
       },
     );
     setLoading(false);
@@ -409,7 +410,7 @@ export default function AnalysisPage({
                     <div className="max-w-3xl rounded-2xl border border-red/30 bg-red/10 px-5 py-4 text-[13px] text-red">
                       분석 리포트 생성이 실패했습니다. 같은 스프린트로 다시 요청하거나 백엔드 오류 로그를 확인해 주세요.
                     </div>
-                  ) : selectedReport.status === 'RUNNING' || selectedReport.status === 'PENDING' ? (
+                  ) : selectedReport.status === 'RUNNING' || selectedReport.status === 'QUEUED' ? (
                     <div className="max-w-3xl rounded-2xl border border-line/50 bg-surface-2/50 px-5 py-5">
                       <p className="m-0 text-[15px] font-medium text-text">
                         {selectedReport.status === 'RUNNING' ? '분석이 진행 중입니다.' : '분석 요청이 접수되었습니다.'}
