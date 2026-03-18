@@ -644,15 +644,18 @@ OTP 재요청 쿨다운 시(HTTP 429), `meta`에 아래 정보 포함:
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| POST | `/api/v1/analysis-requests` | JWT | 스프린트 분석 요청 생성 |
-| GET | `/api/v1/analysis-requests` | JWT | 특정 워크스페이스/스프린트의 분석 요청 목록 조회 |
-| GET | `/api/v1/analysis-requests/{analysisRequestId}/report` | JWT | 분석 요청 리포트 조회 |
+| POST | `/api/v1/workspace/{workspaceId}/analysis-requests` | JWT | 스프린트 분석 요청 생성 |
+| GET | `/api/v1/workspace/{workspaceId}/analysis-requests` | JWT | 특정 워크스페이스/스프린트의 분석 요청 목록 조회 |
+| GET | `/api/v1/workspace/{workspaceId}/analysis-requests/{analysisRequestId}/report` | JWT | 분석 요청 리포트 조회 |
 
-### POST /api/v1/analysis-requests
+### POST /api/v1/workspace/{workspaceId}/analysis-requests
+
+**Path Parameters**
+
+- `workspaceId` (UUID, required)
 
 ```json
 {
-  "workspaceId": "UUID (required)",
   "sprintId": "UUID (required)"
 }
 ```
@@ -667,11 +670,14 @@ OTP 재요청 쿨다운 시(HTTP 429), `meta`에 아래 정보 포함:
 }
 ```
 
-### GET /api/v1/analysis-requests
+### GET /api/v1/workspace/{workspaceId}/analysis-requests
+
+**Path Parameters**
+
+- `workspaceId` (UUID, required)
 
 **Query Parameters**
 
-- `workspaceId` (UUID, required)
 - `sprintId` (UUID, required)
 
 **Response (data)**
@@ -689,10 +695,11 @@ OTP 재요청 쿨다운 시(HTTP 429), `meta`에 아래 정보 포함:
 }
 ```
 
-### GET /api/v1/analysis-requests/{analysisRequestId}/report
+### GET /api/v1/workspace/{workspaceId}/analysis-requests/{analysisRequestId}/report
 
 **Path Parameters**
 
+- `workspaceId` (UUID, required)
 - `analysisRequestId` (UUID, required)
 
 **Response (data)**
