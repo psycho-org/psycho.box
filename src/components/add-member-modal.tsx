@@ -100,7 +100,7 @@ export function AddMemberModal({ open, onClose, workspaceId, workspaceName: init
               if (error) setError('');
             }}
             placeholder="colleague@example.com"
-            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
             disabled={loading}
             autoFocus
           />

@@ -10,7 +10,7 @@ import {
   type WorkspaceMemberDisplayNameMap,
   type WorkspaceMemberDisplaySource,
 } from '@/lib/workspace-member-display';
-import { Button, DatePicker, TaskStatusDot } from '@/components/ui';
+import { Button, DatePicker, Select, TaskStatusDot } from '@/components/ui';
 import { Dialog } from '@/components/ui/dialog';
 import { Snackbar } from '@/components/ui/snackbar';
 import { TaskCreateModal } from '@/components/task-create-modal';
@@ -801,33 +801,35 @@ export default function SprintBoardPage({ params }: { params: Promise<{ workspac
                     {creatingProject ? '...' : '+'}
                   </button>
                 </div>
-                <label className="flex items-center gap-2 rounded-xl border border-line/50 bg-surface-2/40 px-3 py-2 text-[13px] text-text">
-                  <span className="text-text-dim">정렬</span>
-                  <select
+                <div className="flex items-center gap-2 rounded-xl border border-line/50 bg-surface-2/40 px-3 py-2 text-[13px] text-text">
+                  <span className="text-text-dim shrink-0">정렬</span>
+                  <Select
                     value={sortBy}
-                    onChange={(event) => setSortBy(event.target.value as ProjectSort)}
-                    className="bg-transparent outline-none"
-                  >
-                    <option value="manual">기본</option>
-                    <option value="name">이름순</option>
-                    <option value="progress-desc">진행률순</option>
-                    <option value="tasks-desc">태스크 많은 순</option>
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 rounded-xl border border-line/50 bg-surface-2/40 px-3 py-2 text-[13px] text-text">
-                  <span className="text-text-dim">필터</span>
-                  <select
+                    onChange={(v) => setSortBy(v as ProjectSort)}
+                    variant="inline"
+                    options={[
+                      { value: 'manual', label: '기본' },
+                      { value: 'name', label: '이름순' },
+                      { value: 'progress-desc', label: '진행률순' },
+                      { value: 'tasks-desc', label: '태스크 많은 순' },
+                    ]}
+                  />
+                </div>
+                <div className="flex items-center gap-2 rounded-xl border border-line/50 bg-surface-2/40 px-3 py-2 text-[13px] text-text">
+                  <span className="text-text-dim shrink-0">필터</span>
+                  <Select
                     value={taskFilter}
-                    onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}
-                    className="bg-transparent outline-none"
-                  >
-                    <option value="all">전체</option>
-                    <option value="todo">할 일</option>
-                    <option value="in-progress">진행중</option>
-                    <option value="done">완료</option>
-                    <option value="unassigned">담당자 없음</option>
-                  </select>
-                </label>
+                    onChange={(v) => setTaskFilter(v as TaskFilter)}
+                    variant="inline"
+                    options={[
+                      { value: 'all', label: '전체' },
+                      { value: 'todo', label: '할 일' },
+                      { value: 'in-progress', label: '진행중' },
+                      { value: 'done', label: '완료' },
+                      { value: 'unassigned', label: '담당자 없음' },
+                    ]}
+                  />
+                </div>
               </div>
               {moveError ? (
                 <div className="mt-3 hidden rounded-xl border border-red/35 bg-red/10 px-4 py-3 text-[13px] text-red lg:block">

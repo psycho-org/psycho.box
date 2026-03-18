@@ -74,7 +74,7 @@ export function DeleteReasonDialog({
                 if (error) setError('');
               }}
               placeholder={confirmPlaceholder ?? confirmText}
-              className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
               disabled={loading}
             />
             {confirmDescription ? <p className="m-0 mt-2 text-[12px] text-text-dim">{confirmDescription}</p> : null}
@@ -93,7 +93,7 @@ export function DeleteReasonDialog({
             }}
             placeholder="삭제 사유를 입력하세요"
             rows={4}
-            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none"
+            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
             disabled={loading}
             autoFocus
           />

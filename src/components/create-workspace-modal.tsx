@@ -83,7 +83,7 @@ export function CreateWorkspaceModal({ open, onClose, onSuccess }: CreateWorkspa
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="예: DevTeam Alpha"
-            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
             disabled={loading}
             autoFocus
           />
@@ -98,7 +98,7 @@ export function CreateWorkspaceModal({ open, onClose, onSuccess }: CreateWorkspa
             onChange={(e) => setDescription(e.target.value)}
             placeholder="이 워크스페이스는 어떤 팀을 위한 공간인가요?"
             rows={3}
-            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none"
+            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
             disabled={loading}
           />
         </div>

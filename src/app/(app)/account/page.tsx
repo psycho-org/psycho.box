@@ -262,7 +262,7 @@ export default function AccountPage() {
                     type="text"
                     value={givenName}
                     onChange={(e) => setGivenName(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-line bg-bg text-[13px] focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                    className="w-full px-3 py-2.5 rounded-input border border-line bg-surface-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
                     disabled={nameLoading}
                   />
                 </div>
@@ -275,7 +275,7 @@ export default function AccountPage() {
                     type="text"
                     value={familyName}
                     onChange={(e) => setFamilyName(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-line bg-bg text-[13px] focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                    className="w-full px-3 py-2.5 rounded-input border border-line bg-surface-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
                     disabled={nameLoading}
                   />
                 </div>

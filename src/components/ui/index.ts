@@ -37,6 +37,9 @@ export { CollapsibleTableList } from './collapsible-table-list';
 export type { CollapsibleTableListProps, CollapsibleTableGroup } from './collapsible-table-list';
 export type { TaskStatusDotProps } from './task-status-dot';
 
+export { Select } from './select';
+export type { SelectProps, SelectOption } from './select';
+
 export { DatePicker } from './date-picker';
 export type { DatePickerProps, DatePickerMode, DatePickerValue } from './date-picker';
 

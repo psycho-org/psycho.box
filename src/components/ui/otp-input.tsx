@@ -22,7 +22,7 @@ export interface OtpInputProps {
 }
 
 const inputBase =
-  'w-10 h-12 text-center text-lg font-mono border border-line rounded-lg bg-surface-2 text-text focus:outline-2 focus:outline-accent focus:outline-offset-1 transition-colors';
+  'w-10 h-12 text-center text-lg font-mono border border-line rounded-input bg-surface-2 text-text focus:outline-2 focus:outline-accent focus:outline-offset-1 transition-colors';
 
 export function OtpInput({
   value,

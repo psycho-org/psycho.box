@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Dialog } from '@/components/ui/dialog';
-import { Button, DatePicker, TaskStatusDot } from '@/components/ui';
+import { Button, DatePicker, Select, TaskStatusDot } from '@/components/ui';
 import { apiRequest } from '@/lib/client';
 import { getErrorMessage } from '@/lib/error-messages';
 import { TASK_STATUS_LABELS, type TaskStatus } from '@/lib/task-status';
@@ -171,7 +171,7 @@ export function TaskCreateModal({
               if (error) setError('');
             }}
             placeholder="태스크 제목"
-            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
             disabled={loading}
             autoFocus
           />
@@ -186,7 +186,7 @@ export function TaskCreateModal({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="설명 (선택)"
             rows={3}
-            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] placeholder:text-text-dim focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none"
+            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
             disabled={loading}
           />
         </div>
@@ -199,7 +199,7 @@ export function TaskCreateModal({
               type="button"
               onClick={() => !loading && setStatusOpen((o) => !o)}
               disabled={loading}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] text-left hover:border-line-2 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-60"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-surface-2 border border-line rounded-input text-[14px] text-left hover:border-line-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-60"
             >
               <span className="flex items-center gap-2">
                 <TaskStatusDot status={status} />
@@ -241,23 +241,19 @@ export function TaskCreateModal({
           <label htmlFor="task-assignee" className="block text-[13px] font-medium text-text-soft mb-1.5">
             담당자
           </label>
-          <select
+          <Select
             id="task-assignee"
             value={assigneeId}
-            onChange={(e) => setAssigneeId(e.target.value)}
-            className="w-full px-3 py-2.5 bg-surface-2 border border-line rounded-lg text-[14px] focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-60"
+            onChange={setAssigneeId}
             disabled={loading || membersLoading}
-          >
-            <option value="">
-              {membersLoading ? '멤버 불러오는 중...' : '담당자 없음'}
-            </option>
-            {members.map((member) => (
-              <option key={member.membershipId ?? member.accountId} value={member.accountId}>
-                {member.name}
-                {member.role ? ` (${member.role})` : ''}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: '', label: membersLoading ? '멤버 불러오는 중...' : '담당자 없음' },
+              ...members.map((member) => ({
+                value: member.accountId,
+                label: `${member.name}${member.role ? ` (${member.role})` : ''}`,
+              })),
+            ]}
+          />
         </div>
         <div>
           <label className="block text-[13px] font-medium text-text-soft mb-1.5">

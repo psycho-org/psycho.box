@@ -1,6 +1,6 @@
 'use client';
 
-import { TaskStatusDot } from '@/components/ui';
+import { Select, TaskStatusDot } from '@/components/ui';
 import type { TaskStatus } from '@/lib/task-status';
 
 interface Project {
@@ -150,7 +150,7 @@ export function ProjectColumn({
             <span className="text-[12px] text-text-dim tabular-nums">
               {metrics.completedCount} / {metrics.totalCount}
             </span>
-            <div className="w-24 h-2 bg-surface-3 rounded-full overflow-hidden">
+            <div className="flex-1 lg:w-24 lg:flex-none h-2 bg-surface-3 rounded-full overflow-hidden">
               <div
                 className="h-full bg-accent transition-all duration-300"
                 style={{ width: `${metrics.progress}%` }}
@@ -202,7 +202,7 @@ export function ProjectColumn({
                         : 'border-line/50 bg-surface-2/40 hover:shadow-sm hover:border-line/80'
                   }`}
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <TaskStatusDot status={task.status} className="size-2.5 shrink-0" />
@@ -215,26 +215,19 @@ export function ProjectColumn({
                         <span>마감일 {formatDate(task.dueDate)}</span>
                       </div>
                     </div>
-                    <div className="flex w-full flex-wrap items-start gap-2 shrink-0 sm:w-auto sm:flex-nowrap sm:justify-end">
-                      <select
-                        aria-label="프로젝트 이동"
-                        className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2 py-1.5 text-[12px] text-text sm:max-w-[180px] sm:flex-none"
+                    <div className="flex w-full flex-wrap items-center gap-2 shrink-0 sm:w-auto sm:flex-nowrap sm:justify-end">
+                      <Select
+                        size="sm"
+                        className="min-w-0 flex-1 sm:max-w-[180px] sm:flex-none"
                         value={project.projectId}
                         onClick={(event) => event.stopPropagation()}
-                        onChange={(event) => {
-                          event.stopPropagation();
-                          const toProjectId = event.target.value;
+                        onChange={(toProjectId) => {
                           if (toProjectId !== project.projectId) {
                             onMoveTask(task.id, project.projectId, toProjectId);
                           }
                         }}
-                      >
-                        {projects.map((targetProject) => (
-                          <option key={targetProject.projectId} value={targetProject.projectId}>
-                            {targetProject.name}
-                          </option>
-                        ))}
-                      </select>
+                        options={projects.map((p) => ({ value: p.projectId, label: p.name }))}
+                      />
                       <button
                         type="button"
                         aria-label="태스크 삭제"
