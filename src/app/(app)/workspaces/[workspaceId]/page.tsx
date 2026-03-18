@@ -193,7 +193,7 @@ export default function WorkspaceDashboardPage({
             href={`/workspaces/${workspaceId}/board?view=my`}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-line/60 bg-surface-2/60 px-4 text-[13px] font-medium text-text transition-colors hover:border-accent/30 hover:text-accent-soft"
           >
-            나의 테스크 보기
+            나의 태스크 보기
           </Link>
         </div>
       </section>
