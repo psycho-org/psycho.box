@@ -24,11 +24,11 @@ export const TASK_STATUS_IS_OUTLINE: Record<TaskStatus, boolean> = {
  * - BACKLOG: 연한 회색 (테두리만)
  */
 export const TASK_STATUS_COLORS: Record<TaskStatus, string> = {
-  TODO: '#ffd166',
-  IN_PROGRESS: '#3ecf8e',
-  DONE: '#a78bfa',
-  CANCELLED: '#6b7280',
-  BACKLOG: '#9ca3af',
+  TODO: 'var(--theme-task-todo)',
+  IN_PROGRESS: 'var(--theme-task-inprogress)',
+  DONE: 'var(--theme-task-done)',
+  CANCELLED: 'var(--theme-task-cancelled)',
+  BACKLOG: 'var(--theme-task-backlog)',
 } as const;
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {

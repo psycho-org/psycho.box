@@ -38,7 +38,7 @@ export function CooldownCountdown({
   if (secondsLeft <= 0) return null;
 
   return (
-    <p className={`text-text-soft text-[13px] ${className}`} role="status" aria-live="polite">
+    <p className={`text-text-soft text-ui ${className}`} role="status" aria-live="polite">
       {message.replace('{seconds}', String(secondsLeft))}
     </p>
   );
